@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pydantic-settings
+python-multipart
+pdfplumber
+python-docx
+spacy
+scikit-learn
+numpy
+pandas
+python-dotenv
+aiofiles
+jinja2
