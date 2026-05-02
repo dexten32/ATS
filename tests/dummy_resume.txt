@@ -1,0 +1,12 @@
+John Doe
+Expert in Python and React.
+8 years of experience.
+Senior Software Engineer.
+Cloud experience with AWS.
+Microservices architecture depth.
+Managed end-to-end lifecycles.
+Strong communication skills.
+Performance tuning and caching strategies.
+Based in Healthcare domain.
+email: john.doe@example.com
+phone: 1234567890

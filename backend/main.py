@@ -14,12 +14,12 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Advanced Resume ATS API")
 
-# Configure CORS (still useful for local dev)
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=["*"],
+    allow_origins=["http://localhost:8000", "http://127.0.0.1:8000", "http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -27,15 +27,10 @@ app.add_middleware(
 app.include_router(api_router)
 
 # Serve Frontend
-frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend")
-app.mount("/frontend", StaticFiles(directory=frontend_dir), name="static")
+frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 
-@app.get("/")
-def read_root():
-    index_path = os.path.join(frontend_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
-    return {"message": "Backend is running, but index.html not found", "status": "healthy"}
+# Mount root static files and serve index.html automatically
+app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

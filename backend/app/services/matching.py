@@ -2,12 +2,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-# High-impact domain keywords to boost semantic matching
-DOMAIN_KEYWORDS = {
-    "Architecture": ["architecture", "api design", "system design", "scalable", "microservices", "clean code", "performance", "deployment", "infrastructure"],
-    "Security": ["security", "rbac", "auth", "authentication", "authorization", "encryption", "sanitization", "vulnerability", "malicious", "protections"],
-    "DevOps": ["docker", "kubernetes", "k8s", "ci/cd", "automation", "observability", "metrics", "monitoring"]
-}
+from app.core.constants import DOMAIN_KEYWORDS
 
 class SemanticMatchingService:
     @staticmethod

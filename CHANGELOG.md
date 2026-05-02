@@ -2,7 +2,39 @@
 
 All notable changes to the ATS Pro project will be documented in this file.
 
-## [2026-02-24] - Maturity & Depth Overhaul (Today)
+## [2026-05-02] - Clean Code & Architecture Refactoring
+
+### Added
+- **Core Constants Module**: Extracted bulky configuration mappings (`SKILL_MAP`, `MATURITY_SIGNALS`, etc.) into `backend/app/core/constants.py` for cleaner domain separation.
+- **Project Reorganization**: Established new directories (`scripts/`, `data/`, `docs/`, `tests/`) to cleanly hide loose files from the root repository.
+- **Frontend Modularity**: Introduced `Header.jsx` and `Dashboard.jsx` to break down monolithic frontend components.
+
+### Modified
+- **Scoring & Parsing Services**: Broken down massive 150+ line methods in `scoring.py` into distinct, single-responsibility helper methods (e.g., `_calculate_skill_score`, `_calculate_maturity_score`).
+- **Scraper Script**: Encapsulated the LinkedIn scraper script (`scraping.py`) into a reusable `LinkedInScraper` class and moved it to `scripts/`.
+- **Frontend State Management**: Rewrote `App.jsx` to function strictly as a layout wrapper and view router rather than a rendering monolith.
+
+## [2026-02-25] - Cyber Emerald Theme & Advanced UI Refinement
+
+### Added
+- **Cyber Emerald Design System**: Implemented a comprehensive new color palette featuring deep navy (`#020617`) and vibrant emerald gradients (`#10b981` to `#3b82f6`).
+- **Advanced Background Graphics**: Integrated an SVG hex-grid pattern, animated scan lines, and high-tech "Cyber Glow" orbs for visual depth.
+- **Desktop HUD Elements**: Added HUD-inspired technical markers (SYS_SCAN, LATENCY) to fill the desktop void areas on screens wider than 1440px.
+- **Enhanced Glassmorphism**: Upgraded card styles with higher backdrop blur (16px), subtle borders, grain texture, and multi-layered shadows.
+- **Micro-animations**: Integrated smooth hover transitions, scale effects for buttons, and fade-in animations for result sections.
+
+### Modified
+- **style.css**: Completely overhauled with a modern, responsive, and animation-rich design system.
+- **app.js**: Updated dynamic UI elements (circular progress, confidence badges, feedback cards) to align with the new Emerald theme.
+- **index.html**: Refined structure with semantic improvements, step-by-step numbering for user flow, and enhanced header scaling.
+
+### Fixed
+- **Responsive Layout**: Re-engineered the grid system to ensure perfect alignment and readability across all viewports (Mobile, Tablet, and Desktop).
+- **CSS Compatibility**: Added standard `background-clip` properties for better cross-browser support.
+
+---
+
+## [2026-02-24] - Maturity & Depth Overhaul
 
 ### Added
 - **Architectural Pattern Detection**: Shifted from keyword matching to detecting functional system clusters:

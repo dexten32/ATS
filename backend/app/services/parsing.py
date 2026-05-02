@@ -1,114 +1,13 @@
 import re
 from typing import List, Dict, Any
 
-# Skill keywords and their normalized forms
-SKILL_MAP = {
-    "react": "React",
-    "reactjs": "React",
-    "react.js": "React",
-    "nodejs": "Node.js",
-    "node.js": "Node.js",
-    "js": "JavaScript",
-    "javascript": "JavaScript",
-    "ts": "TypeScript",
-    "typescript": "TypeScript",
-    "python": "Python",
-    "py": "Python",
-    "fastapi": "FastAPI",
-    "sql": "SQL",
-    "postgres": "PostgreSQL",
-    "postgresql": "PostgreSQL",
-    "docker": "Docker",
-    "kubernetes": "Kubernetes",
-    "k8s": "Kubernetes",
-    "aws": "AWS",
-    "amazon web services": "AWS",
-    "java": "Java",
-    "spring": "Spring",
-    "angular": "Angular",
-    "vue": "Vue",
-    "ml": "Machine Learning",
-    "machine learning": "Machine Learning",
-}
-
-SKILL_KEYWORDS = list(set(SKILL_MAP.values()))
-
+from app.core.constants import (
+    SKILL_MAP, SKILL_KEYWORDS, SKILL_GROUPS, MONTH_MAP,
+    INDUSTRY_DOMAINS, SENIORITY_SIGNALS, MATURITY_SIGNALS,
+    ARCHITECTURE_KEYWORDS, PRODUCTION_KEYWORDS, ARCHITECTURAL_PATTERNS,
+    SOFT_SKILLS_KEYWORDS, FRONTEND_DEPTH_KEYWORDS
+)
 from datetime import datetime
-
-# Skill groups (Equivalence)
-SKILL_GROUPS = {
-    "Frontend Frameworks": ["React", "Angular", "Vue", "Svelte"],
-    "Relational Databases": ["PostgreSQL", "MySQL", "SQL Server", "Oracle", "SQL"],
-    "Backend Frameworks": ["FastAPI", "Django", "Flask", "Spring Boot", "Node.js", "Express"],
-    "Cloud Providers": ["AWS", "Azure", "GCP"],
-}
-
-# Mapping for duration calculation
-MONTH_MAP = {
-    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
-    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'june': 6,
-    'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12
-}
-
-# Domain Classification Keywords
-INDUSTRY_DOMAINS = {
-    "Healthcare": ["healthcare", "medical", "patient", "clinical", "hospital", "pharma"],
-    "Fintech": ["fintech", "banking", "finance", "payment", "crypto", "trading", "ledger"],
-    "E-commerce": ["e-commerce", "retail", "shopping", "cart", "marketplace", "order management"],
-    "Cybersecurity": ["cybersecurity", "infosec", "threat", "penetration", "incident response", "compliance"],
-}
-
-# Seniority Signals
-SENIORITY_SIGNALS = {
-    "Lead": ["lead", "led", "architect", "architected", "principal", "head of", "director"],
-    "Senior": ["senior", "sr", "technical lead", "mentor", "mentored", "owner", "owned"],
-    "Junior": ["junior", "jr", "entry", "intern", "associate"],
-}
-
-# Maturity & Depth Signals (Growth Path Indicators)
-MATURITY_SIGNALS = {
-    "Scale": [
-        r"\d+\s*k\s*tps", r"\d+\s*million", r"petabyte", r"scale[d]?\s+(up|out)", 
-        r"high\s*availability", r"throughput", r"concurrency", r"latency\s*reduction"
-    ],
-    "Ownership": [
-        r"end-to-end", r"full\s*lifecycle", r"stakeholder\s*management", 
-        r"technical\s*roadmap", r"mentored\s*senior", r"built\s*from\s*scratch", r"evangelized"
-    ],
-    "Optimization": [
-        r"perf\s+tuning", r"query\s*optimization", r"cache\s*strat", r"bottleneck\s*analysis",
-        r"profiling", r"resource\s*utilization", r"memory\s*leak"
-    ],
-}
-
-# Domain Clusters (Expertise Gates)
-ARCHITECTURE_KEYWORDS = [
-    "microservices", "distributed systems", "eventual consistency", "cap theorem", 
-    "message queues", "caching layers", "sharding", "replication", "partitioning", "idempotency"
-]
-PRODUCTION_KEYWORDS = [
-    "ci/cd", "blue-green", "canary", "observability", "grafana", "prometheus", "elk", 
-    "tracing", "incident response", "slat", "slo", "slis", "zerototal downtime"
-]
-# Professional Architectural Patterns (System Thinking Clusters)
-ARCHITECTURAL_PATTERNS = {
-    "Workflow & Orchestration": [
-        "workflow engine", "state machine", "approval chain", "bpmn", "temporal", "airflow", "orchestration"
-    ],
-    "Security & Identity": [
-        "rbac", "role-based access", "abac", "iam policies", "oauth2", "openid connect", "permissioning"
-    ],
-    "Observability & Audit": [
-        "audit trail", "change tracking", "traceability", "log aggregation", "telemetry", "opentelemetry"
-    ],
-    "Event-Driven Design": [
-        "event-based", "pub/sub", "message broker", "asynchronous processing", "cqrs", "event sourcing"
-    ]
-}
-
-SOFT_SKILLS_KEYWORDS = ["client", "stakeholder", "collaboration", "communication", "requirement gathering", "presentation"]
-FRONTEND_DEPTH_KEYWORDS = ["accessibility", "a11y", "performance tuning", "code splitting", "state management", "design system"]
 
 class ParsingService:
     @staticmethod
@@ -129,16 +28,26 @@ class ParsingService:
         month_pattern = r'(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)'
         year_pattern = r'(?:\d{4})'
         date_pattern = rf'({month_pattern}\s+{year_pattern})'
-        present_pattern = r'(?:Present|Current|Now)'
+        present_pattern = r'(?:Present|Current|Now|Onward[s]?|Till Date|To Date|Active)'
         
+        # 1. Handle Standard Ranges: Date to (Date or Present)
         range_pattern = rf'{date_pattern}\s*(?:-|to|until)\s*({date_pattern}|{present_pattern})'
         
-        total_months = 0
-        matches = re.finditer(range_pattern, text, re.IGNORECASE)
+        # 2. Handle Open-ended Ranges: Date (Present Keyword)
+        # Examples: "Jan 2020 onward", "Since Jan 2020", "Jan 2020 - "
+        # Modified to ensure date_pattern is always in a capturing group
+        open_ended_pattern = rf'(?:Since\s+{date_pattern}(?:\s*{present_pattern})?)|(?:{date_pattern}\s*(?:-|to|until)?\s*{present_pattern})|(?:{date_pattern}\s*-\s*(?!\d))'
         
+        total_months = 0
         found_ranges = False
+        track_indices = []
+
+        # Process standard ranges first
+        matches = list(re.finditer(range_pattern, text, re.IGNORECASE))
         for match in matches:
             found_ranges = True
+            track_indices.append(match.span())
+            
             start_str = match.group(1).lower()
             end_str = match.group(2).lower()
             
@@ -149,6 +58,30 @@ class ParsingService:
                 end_date = ParsingService._parse_date(end_str)
             
             if start_date and end_date:
+                diff = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
+                if diff > 0:
+                    total_months += diff
+
+        # Process open-ended ranges, but avoid those already covered by standard ranges
+        matches = list(re.finditer(open_ended_pattern, text, re.IGNORECASE))
+        for match in matches:
+            span = match.span()
+            # Check if this match overlaps significantly with any already processed range
+            is_overlap = any(max(span[0], s[0]) < min(span[1], s[1]) for s in track_indices)
+            if is_overlap:
+                continue
+                
+            found_ranges = True
+            track_indices.append(span)
+            
+            # Find the first non-None group which should be our date
+            date_str = next((g for g in match.groups() if g is not None), None)
+            if not date_str: continue
+            
+            start_date = ParsingService._parse_date(date_str.lower())
+            end_date = datetime.now()
+            
+            if start_date:
                 diff = (end_date.year - start_date.year) * 12 + (end_date.month - start_date.month)
                 if diff > 0:
                     total_months += diff

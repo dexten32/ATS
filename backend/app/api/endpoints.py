@@ -100,3 +100,17 @@ async def analyze_resume(
 def get_history(db: Session = Depends(get_db)):
     results = db.query(models.AnalysisResult).order_by(models.AnalysisResult.created_at.desc()).limit(10).all()
     return results
+
+@router.get("/jobs")
+def get_scraped_jobs():
+    try:
+        # Construct path to scraped_jobs.json at the root of the ATS project
+        import os
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        jobs_file = os.path.join(base_dir, "data", "scraped_jobs.json")
+        if not os.path.exists(jobs_file):
+            return []
+        with open(jobs_file, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

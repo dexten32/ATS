@@ -1,0 +1,420 @@
+﻿
+==================== High Performance Visualization | 2026-02-26 10:40:00 ====================
+
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✓ 'p(95)<500' p(95)=256.5ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 65924   1316.219349/s
+    checks_succeeded...: 100.00% 65924 out of 65924
+    checks_failed......: 0.00%   0 out of 65924
+
+    ✓ status is 200
+    ✓ content is valid
+
+    HTTP
+    http_req_duration..............: avg=142.37ms min=509µs   med=157.35ms max=372.46ms p(90)=209.82ms p(95)=256.5ms 
+      { expected_response:true }...: avg=142.37ms min=509µs   med=157.35ms max=372.46ms p(90)=209.82ms p(95)=256.5ms 
+    http_req_failed................: 0.00%  0 out of 32962
+    http_reqs......................: 32962  658.109674/s
+
+    EXECUTION
+    iteration_duration.............: avg=243.36ms min=100.7ms med=258.14ms max=472.72ms p(90)=313.35ms p(95)=356.91ms
+    iterations.....................: 32962  658.109674/s
+    vus............................: 2      min=2          max=200
+    vus_max........................: 200    min=200        max=200
+
+    NETWORK
+    data_received..................: 258 MB 5.1 MB/s
+    data_sent......................: 2.3 MB 46 kB/s
+
+running (0m50.1s), 000/200 VUs, 32962 complete and 0 interrupted iterations
+default ✓ [ 100% ] 000/200 VUs  50s
+
+==================== Refined Metrics Test | 2026-02-26 10:47:09 ====================
+
+  █ THRESHOLDS 
+
+    http_req_duration
+    ✓ 'p(95)<500' p(95)=253.45ms
+
+    http_req_failed
+    ✓ 'rate<0.01' rate=0.00%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 65474   1309.308944/s
+    checks_succeeded...: 100.00% 65474 out of 65474
+    checks_failed......: 0.00%   0 out of 65474
+
+    ✓ status is 200
+    ✓ content is valid
+
+    HTTP
+    http_req_duration..............: avg=143.96ms min=503.2µs  med=158.31ms max=376.06ms p(90)=208.88ms p(95)=253.45ms
+      { expected_response:true }...: avg=143.96ms min=503.2µs  med=158.31ms max=376.06ms p(90)=208.88ms p(95)=253.45ms
+    http_req_failed................: 0.00%  0 out of 32737
+    http_reqs......................: 32737  654.654472/s
+
+    EXECUTION
+    iteration_duration.............: avg=245.03ms min=100.65ms med=259.41ms max=476.69ms p(90)=310.99ms p(95)=354.02ms
+    iterations.....................: 32737  654.654472/s
+    vus............................: 1      min=1          max=200
+    vus_max........................: 200    min=200        max=200
+
+    NETWORK
+    data_received..................: 256 MB 5.1 MB/s
+    data_sent......................: 2.3 MB 46 kB/s
+
+running (0m50.0s), 000/200 VUs, 32737 complete and 0 interrupted iterations
+default ✓ [ 100% ] 000/200 VUs  50s
+
+==================== Multi-Stage Stress Test | 2026-02-26 10:53:31 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=211.44ms
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 370450  1122.530204/s
+    checks_succeeded...: 100.00% 370450 out of 370450
+    checks_failed......: 0.00%   0 out of 370450
+
+    Γ£ô status is 200
+    Γ£ô content is valid
+
+    HTTP
+    http_req_duration..............: avg=85.26ms  min=503.1┬╡s  med=58.96ms  max=370.49ms p(90)=188.05ms p(95)=211.44ms
+      { expected_response:true }...: avg=85.26ms  min=503.1┬╡s  med=58.96ms  max=370.49ms p(90)=188.05ms p(95)=211.44ms
+    http_req_failed................: 0.00%  0 out of 185225
+    http_reqs......................: 185225 561.265102/s
+
+    EXECUTION
+    iteration_duration.............: avg=186.34ms min=100.53ms med=160.47ms max=470.56ms p(90)=289.65ms p(95)=312.94ms
+    iterations.....................: 185225 561.265102/s
+    vus............................: 1      min=1           max=200
+    vus_max........................: 200    min=200         max=200
+
+    NETWORK
+    data_received..................: 1.4 GB 4.4 MB/s
+    data_sent......................: 13 MB  39 kB/s
+
+
+
+
+running (5m30.0s), 000/200 VUs, 185225 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/200 VUs  5m30s
+
+==================== Extended 300VU Stress Test | 2026-02-26 11:00:51 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=336.4ms
+
+    http_req_failed
+    Γ£ù 'rate<0.01' rate=76.30%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 804174 2435.825895/s
+    checks_succeeded...: 23.69% 190528 out of 804174
+    checks_failed......: 76.30% 613646 out of 804174
+
+    Γ£ù status is 200
+      Γå│  23% ΓÇö Γ£ô 95264 / Γ£ù 306823
+    Γ£ù content is valid
+      Γå│  23% ΓÇö Γ£ô 95264 / Γ£ù 306823
+
+    HTTP
+    http_req_duration..............: avg=56.79ms  min=0s      med=0s       max=4.48s p(90)=284ms    p(95)=336.4ms 
+      { expected_response:true }...: avg=239.45ms min=503.1┬╡s med=269.02ms max=4.48s p(90)=373.95ms p(95)=406.45ms
+    http_req_failed................: 76.30% 306823 out of 402087
+    http_reqs......................: 402087 1217.912948/s
+
+    EXECUTION
+    iteration_duration.............: avg=84.46ms  min=0s      med=3.4ms    max=4.58s p(90)=385.36ms p(95)=437.94ms
+    iterations.....................: 402087 1217.912948/s
+    vus............................: 1      min=1                max=200
+    vus_max........................: 200    min=200              max=200
+
+    NETWORK
+    data_received..................: 745 MB 2.3 MB/s
+    data_sent......................: 6.7 MB 20 kB/s
+
+
+
+
+running (5m30.1s), 000/200 VUs, 402087 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/200 VUs  5m30s
+time="2026-02-26T11:06:21+05:30" level=error msg="thresholds on metrics 'http_req_failed' have been crossed"
+
+==================== Extended 300VU Stress Test | 2026-02-26 11:01:51 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=373.38ms
+
+    http_req_failed
+    Γ£ù 'rate<0.01' rate=10.50%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 756618 1146.368752/s
+    checks_succeeded...: 89.49% 677164 out of 756618
+    checks_failed......: 10.50% 79454 out of 756618
+
+    Γ£ù status is 200
+      Γå│  89% ΓÇö Γ£ô 338582 / Γ£ù 39727
+    Γ£ù content is valid
+      Γå│  89% ΓÇö Γ£ô 338582 / Γ£ù 39727
+
+    HTTP
+    http_req_duration..............: avg=218.3ms  min=0s      med=240.43ms max=4.48s p(90)=342.91ms p(95)=373.38ms
+      { expected_response:true }...: avg=243.92ms min=509.6┬╡s med=262.44ms max=4.48s p(90)=348.08ms p(95)=378.5ms 
+    http_req_failed................: 10.50% 39727 out of 378309
+    http_reqs......................: 378309 573.184376/s
+
+    EXECUTION
+    iteration_duration.............: avg=309.34ms min=0s      med=342.12ms max=4.58s p(90)=444.33ms p(95)=475.02ms
+    iterations.....................: 378309 573.184376/s
+    vus............................: 1      min=1               max=300
+    vus_max........................: 300    min=300             max=300
+
+    NETWORK
+    data_received..................: 2.6 GB 4.0 MB/s
+    data_sent......................: 24 MB  36 kB/s
+
+
+
+
+running (11m00.0s), 000/300 VUs, 378309 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/300 VUs  11m0s
+time="2026-02-26T11:12:52+05:30" level=error msg="thresholds on metrics 'http_req_failed' have been crossed"
+
+==================== Extended 300VU Stress Test | 2026-02-26 11:13:04 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=416.34ms
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 839220  1271.434997/s
+    checks_succeeded...: 100.00% 839220 out of 839220
+    checks_failed......: 0.00%   0 out of 839220
+
+    Γ£ô status is 200
+    Γ£ô content is valid
+
+    HTTP
+    http_req_duration..............: avg=177.94ms min=503┬╡s    med=144.62ms max=6.4s p(90)=335.84ms p(95)=416.34ms
+      { expected_response:true }...: avg=177.94ms min=503┬╡s    med=144.62ms max=6.4s p(90)=335.84ms p(95)=416.34ms
+    http_req_failed................: 0.00%  0 out of 419610
+    http_reqs......................: 419610 635.717499/s
+
+    EXECUTION
+    iteration_duration.............: avg=278.91ms min=100.52ms med=245.41ms max=6.5s p(90)=436.84ms p(95)=517.5ms 
+    iterations.....................: 419610 635.717499/s
+    vus............................: 1      min=1           max=300
+    vus_max........................: 300    min=300         max=300
+
+    NETWORK
+    data_received..................: 3.3 GB 5.0 MB/s
+    data_sent......................: 29 MB  45 kB/s
+
+
+
+
+running (11m00.1s), 000/300 VUs, 419610 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/300 VUs  11m0s
+
+==================== Spike Test (1000 VU) | 2026-02-26 11:46:26 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=0s
+
+    http_req_failed
+    Γ£ù 'rate<0.01' rate=99.18%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 2281688 15155.295929/s
+    checks_succeeded...: 0.81%   18570 out of 2281688
+    checks_failed......: 99.18%  2263118 out of 2281688
+
+    Γ£ù status is 200
+      Γå│  0% ΓÇö Γ£ô 9285 / Γ£ù 1131559
+    Γ£ù content is valid
+      Γå│  0% ΓÇö Γ£ô 9285 / Γ£ù 1131559
+
+    HTTP
+    http_req_duration..............: avg=39.95ms  min=0s       med=0s       max=1m0s     p(90)=0s       p(95)=0s      
+      { expected_response:true }...: avg=307.58ms min=507.29┬╡s med=310.43ms max=786.68ms p(90)=608.31ms p(95)=670.64ms
+    http_req_failed................: 99.18%  1131559 out of 1140844
+    http_reqs......................: 1140844 7577.647965/s
+
+    EXECUTION
+    iteration_duration.............: avg=79.4ms   min=0s       med=3.37ms   max=1m0s     p(90)=133.33ms p(95)=200.1ms 
+    iterations.....................: 1140844 7577.647965/s
+    vus............................: 87      min=30                 max=1000
+    vus_max........................: 1000    min=1000               max=1000
+
+    NETWORK
+    data_received..................: 73 MB   483 kB/s
+    data_sent......................: 700 kB  4.6 kB/s
+
+
+
+
+running (2m30.6s), 0000/1000 VUs, 1140844 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 0000/1000 VUs  2m30s
+time="2026-02-26T11:48:57+05:30" level=error msg="thresholds on metrics 'http_req_failed' have been crossed"
+
+==================== Refined 300 VU Spike Test | 2026-02-26 11:55:35 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=389.47ms
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 202158  1347.238822/s
+    checks_succeeded...: 100.00% 202158 out of 202158
+    checks_failed......: 0.00%   0 out of 202158
+
+    Γ£ô status is 200
+    Γ£ô content is valid
+
+    HTTP
+    http_req_duration..............: avg=255.42ms min=503.4┬╡s  med=281.98ms max=578.19ms p(90)=354.2ms  p(95)=389.47ms
+      { expected_response:true }...: avg=255.42ms min=503.4┬╡s  med=281.98ms max=578.19ms p(90)=354.2ms  p(95)=389.47ms
+    http_req_failed................: 0.00%  0 out of 101079
+    http_reqs......................: 101079 673.619411/s
+
+    EXECUTION
+    iteration_duration.............: avg=356.64ms min=100.57ms med=382.9ms  max=678.45ms p(90)=456.48ms p(95)=491.05ms
+    iterations.....................: 101079 673.619411/s
+    vus............................: 2      min=2           max=300
+    vus_max........................: 300    min=300         max=300
+
+    NETWORK
+    data_received..................: 791 MB 5.3 MB/s
+    data_sent......................: 7.1 MB 47 kB/s
+
+
+
+
+running (2m30.1s), 000/300 VUs, 101079 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/300 VUs  2m30s
+
+==================== 6-Hour Soak Test (300 VU) | 2026-02-26 12:24:00 ====================
+
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=930.61ms
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 133356  888.676277/s
+    checks_succeeded...: 100.00% 133356 out of 133356
+    checks_failed......: 0.00%   0 out of 133356
+
+    Γ£ô status is 200
+    Γ£ô content is valid
+
+    HTTP
+    http_req_duration..............: avg=439.74ms min=502.4┬╡s  med=413.64ms max=1.57s p(90)=770.87ms p(95)=930.61ms
+      { expected_response:true }...: avg=439.74ms min=502.4┬╡s  med=413.64ms max=1.57s p(90)=770.87ms p(95)=930.61ms
+    http_req_failed................: 0.00%  0 out of 66678
+    http_reqs......................: 66678  444.338139/s
+
+    EXECUTION
+    iteration_duration.............: avg=541.01ms min=100.69ms med=514.61ms max=1.68s p(90)=872.66ms p(95)=1.03s   
+    iterations.....................: 66678  444.338139/s
+    vus............................: 1      min=1          max=300
+    vus_max........................: 300    min=300        max=300
+
+    NETWORK
+    data_received..................: 522 MB 3.5 MB/s
+    data_sent......................: 4.7 MB 31 kB/s
+
+
+
+
+running (2m30.1s), 000/300 VUs, 66678 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/300 VUs  2m30s
+  Γûê THRESHOLDS 
+
+    http_req_duration
+    Γ£ô 'p(95)<1000' p(95)=457.83ms
+
+    http_req_failed
+    Γ£ô 'rate<0.01' rate=0.00%
+
+
+  Γûê TOTAL RESULTS 
+
+    checks_total.......: 32302814 1479.061159/s
+    checks_succeeded...: 100.00%  32302814 out of 32302814
+    checks_failed......: 0.00%    0 out of 32302814
+
+    Γ£ô status is 200
+    Γ£ô content is valid
+
+    HTTP
+    http_req_duration..............: avg=302.5ms  min=503.7┬╡s  med=278.26ms max=8.06s p(90)=396.07ms p(95)=457.83ms
+      { expected_response:true }...: avg=302.5ms  min=503.7┬╡s  med=278.26ms max=8.06s p(90)=396.07ms p(95)=457.83ms
+    http_req_failed................: 0.00%    0 out of 16151407
+    http_reqs......................: 16151407 739.530579/s
+
+    EXECUTION
+    iteration_duration.............: avg=403.41ms min=100.54ms med=379.25ms max=8.16s p(90)=497.11ms p(95)=559.02ms
+    iterations.....................: 16151407 739.530579/s
+    vus............................: 1        min=1             max=300
+    vus_max........................: 300      min=300           max=300
+
+    NETWORK
+    data_received..................: 126 GB   5.8 MB/s
+    data_sent......................: 1.1 GB   52 kB/s
+
+
+
+
+running (6h04m00.1s), 000/300 VUs, 16151407 complete and 0 interrupted iterations
+default Γ£ô [ 100% ] 000/300 VUs  6h4m0s

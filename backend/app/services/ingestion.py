@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import uuid
 import pdfplumber
@@ -6,7 +7,7 @@ import docx
 from fastapi import UploadFile, HTTPException
 from typing import Tuple
 
-UPLOAD_DIR = "uploads"
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
@@ -18,12 +19,12 @@ class IngestionService:
         if ext not in ALLOWED_EXTENSIONS:
             raise HTTPException(status_code=400, detail=f"File extension {ext} not allowed")
         
-        # Check size (basic check)
-        # file.file.seek(0, 2)
-        # size = file.file.tell()
-        # file.file.seek(0)
-        # if size > MAX_FILE_SIZE:
-        #     raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+        # Check size (5MB limit)
+        file.file.seek(0, 2)
+        size = file.file.tell()
+        file.file.seek(0)
+        if size > MAX_FILE_SIZE:
+            raise HTTPException(status_code=400, detail="File too large (max 5MB)")
         
         return ext
 
@@ -32,7 +33,12 @@ class IngestionService:
         if not os.path.exists(UPLOAD_DIR):
             os.makedirs(UPLOAD_DIR)
             
-        unique_filename = f"{uuid.uuid4()}_{file.filename}"
+        # Sanitize filename to prevent path traversal
+        clean_name = "".join([c for c in file.filename if c.isalnum() or c in "._-"]).strip()
+        if not clean_name:
+            clean_name = "upload"
+            
+        unique_filename = f"{uuid.uuid4()}_{clean_name}"
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
         
         with open(file_path, "wb") as buffer:
@@ -71,5 +77,6 @@ class IngestionService:
     @staticmethod
     def sanitize_text(text: str) -> str:
         # Basic sanitization to prevent script injection if text is rendered
-        # In a real app, this would be more complex (e.g., removing HTML tags)
-        return text.strip()
+        # Removes HTML tags and trims whitespace
+        clean_text = re.sub(r'<[^>]*>', '', text)
+        return clean_text.strip()
