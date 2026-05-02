@@ -2,98 +2,157 @@ import asyncio
 import random
 import json
 import hashlib
+import os
+from datetime import datetime
 from typing import List, Dict, Any
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
 
-import os
-class LinkedInScraper:
-    def __init__(self, keyword: str, location: str, max_jobs: int = 10, output_file: str = None):
+# --- BASE SCRAPER CLASS ---
+class BaseScraper:
+    def __init__(self, keyword: str, location: str, max_jobs: int):
         self.keyword = keyword
         self.location = location
         self.max_jobs = max_jobs
-        if output_file is None:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            self.output_file = os.path.join(base_dir, "data", "scraped_jobs.json")
-        else:
-            self.output_file = output_file
         self.jobs = []
+        
+        # Ensure data directory exists
+        self.script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.base_dir = os.path.dirname(self.script_dir)
+        self.output_dir = os.path.join(self.base_dir, "data")
+        os.makedirs(self.output_dir, exist_ok=True)
+        self.output_file = os.path.join(self.output_dir, "master_scraped_jobs.json")
 
     def _generate_job_hash(self, title: str, company: str) -> str:
         data = f"{title.lower()}|{company.lower()}|{self.location.lower()}".encode()
         return hashlib.sha256(data).hexdigest()
 
-    async def _fetch_job_description(self, context: Any, link: str) -> str:
-        detail_page = await context.new_page()
-        full_jd = "Description not found"
-        try:
-            await detail_page.goto(link, wait_until="domcontentloaded", timeout=60000)
-            jd_selector = ".show-more-less-html__markup, .description__text, section.description"
-            await detail_page.wait_for_selector(jd_selector, timeout=10000)
-            full_jd = (await detail_page.locator(jd_selector).first.inner_text()).strip()
-        except Exception:
-            pass
-        finally:
-            await detail_page.close()
-        return full_jd
-
-    def _save_jobs(self):
-        with open(self.output_file, "w", encoding="utf-8") as f:
-            json.dump(self.jobs, f, indent=4, ensure_ascii=False)
-        print(f"\nSuccessfully saved {len(self.jobs)} jobs to {self.output_file}")
-
-    async def scrape(self) -> List[Dict[str, str]]:
-        async with Stealth().use_async(async_playwright()) as p:
-            browser = await p.chromium.launch(headless=False) 
-            context = await browser.new_context(viewport={'width': 1280, 'height': 800})
-            page = await context.new_page()
-            
-            search_url = f"https://www.linkedin.com/jobs/search?keywords={self.keyword}&location={self.location}&f_TPR=r86400"
-            print(f"Opening: {search_url}")
-            
+    def save_results(self, new_jobs: List[Dict]):
+        # Load existing jobs to prevent overwriting other platforms
+        existing_jobs = []
+        if os.path.exists(self.output_file):
             try:
-                await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
-                await page.wait_for_selector(".base-card", timeout=15000)
-            except Exception as e:
-                print(f"Initial load failed: {e}")
-                await browser.close()
-                return []
+                with open(self.output_file, "r", encoding="utf-8") as f:
+                    existing_jobs = json.load(f)
+            except: existing_jobs = []
 
+        # Use a dict to deduplicate by hash
+        master_dict = {j['job_hash']: j for j in existing_jobs}
+        for nj in new_jobs:
+            master_dict[nj['job_hash']] = nj
+
+        with open(self.output_file, "w", encoding="utf-8") as f:
+            json.dump(list(master_dict.values()), f, indent=4, ensure_ascii=False)
+        print(f"--- Saved results to {self.output_file} ---")
+
+# --- LINKEDIN MODULE ---
+class LinkedInScraper(BaseScraper):
+    async def scrape(self, context):
+        print(f"\n[LinkedIn] Starting search for {self.keyword}...")
+        page = await context.new_page()
+        search_url = f"https://www.linkedin.com/jobs/search?keywords={self.keyword}&location={self.location}&f_TPR=r86400"
+        
+        try:
+            await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+            await page.wait_for_selector(".base-card", timeout=15000)
+            
             job_cards = await page.locator(".base-card, .job-search-card").all()
-            print(f"Found {len(job_cards)} jobs. Starting deep extraction...")
-
-            for i, card in enumerate(job_cards[:self.max_jobs]): 
+            for i, card in enumerate(job_cards[:self.max_jobs]):
                 try:
                     await card.scroll_into_view_if_needed()
-                    title = (await card.locator("h3, .base-search-card__title").first.inner_text()).strip()
-                    company = (await card.locator("h4, .base-search-card__subtitle").first.inner_text()).strip()
+                    title = (await card.locator("h3").first.inner_text()).strip()
+                    company = (await card.locator("h4").first.inner_text()).strip()
                     link = await card.locator("a").first.get_attribute("href")
                     
-                    print(f"[{i+1}] Fetching JD for: {title}...")
+                    # Deep Scrape JD in new tab
+                    jd_page = await context.new_page()
+                    await jd_page.goto(link, wait_until="domcontentloaded")
+                    await jd_page.wait_for_selector(".show-more-less-html__markup", timeout=10000)
+                    full_jd = (await jd_page.locator(".show-more-less-html__markup").first.inner_text()).strip()
+                    await jd_page.close()
 
-                    full_jd = await self._fetch_job_description(context, link)
-                    job_id_hash = self._generate_job_hash(title, company)
-                    
                     self.jobs.append({
-                        "job_hash": job_id_hash,
-                        "title": title,
-                        "company": company,
-                        "location": self.location,
-                        "link": link,
-                        "full_description": full_jd
+                        "job_hash": self._generate_job_hash(title, company),
+                        "platform": "LinkedIn",
+                        "keyword": self.keyword,
+                        "title": title, "company": company, "location": self.location,
+                        "link": link, "full_description": full_jd,
+                        "score": 0,
+                        "timestamp": datetime.now().isoformat()
                     })
-                    
-                    print(f"   ✓ Scraped successfully")
+                    print(f"   ✓ [LinkedIn] {title}")
                     await page.wait_for_timeout(random.randint(2000, 4000))
+                except: continue
+        finally:
+            await page.close()
+        return self.jobs
 
-                except Exception as e:
-                    print(f"   ! Error on job {i+1}: {str(e)[:50]}")
-                    continue
+# --- INDEED MODULE ---
+class IndeedScraper(BaseScraper):
+    async def scrape(self, context):
+        print(f"\n[Indeed] Starting search for {self.keyword}...")
+        page = await context.new_page()
+        # Indeed URL format
+        search_url = f"https://in.indeed.com/jobs?q={self.keyword}&l={self.location}&fromage=1"
+        
+        try:
+            await page.goto(search_url, wait_until="domcontentloaded")
+            await page.wait_for_timeout(5000)
+            
+            # Indeed Job Cards use 'job_seen_beacon'
+            job_cards = await page.locator(".job_seen_beacon").all()
+            for i, card in enumerate(job_cards[:self.max_jobs]):
+                try:
+                    title = (await card.locator("h2.jobTitle").inner_text()).strip()
+                    company = (await card.locator("[data-testid='company-name']").inner_text()).strip()
+                    # Indeed requires a bit of click logic to see JD on the same page
+                    await card.click()
+                    await page.wait_for_selector("#jobDescriptionText", timeout=10000)
+                    full_jd = (await page.locator("#jobDescriptionText").inner_text()).strip()
 
-            self._save_jobs()
-            await browser.close()
-            return self.jobs
+                    self.jobs.append({
+                        "job_hash": self._generate_job_hash(title, company),
+                        "platform": "Indeed",
+                        "keyword": self.keyword,
+                        "title": title, "company": company, "location": self.location,
+                        "link": page.url, "full_description": full_jd,
+                        "score": 0,
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    print(f"   ✓ [Indeed] {title}")
+                    await page.wait_for_timeout(random.randint(2000, 4000))
+                except: continue
+        finally:
+            await page.close()
+        return self.jobs
+
+# --- MAIN COORDINATOR ---
+async def main(keyword: str, location: str, max_jobs: int):
+    max_per_platform = max(1, max_jobs // 2)
+
+    async with Stealth().use_async(async_playwright()) as p:
+        browser = await p.chromium.launch(headless=False) # Change to True for background
+        context = await browser.new_context(viewport={'width': 1280, 'height': 800})
+        
+        # 1. Scrape LinkedIn
+        li_scraper = LinkedInScraper(keyword, location, max_per_platform)
+        li_results = await li_scraper.scrape(context)
+        li_scraper.save_results(li_results)
+
+        # 2. Scrape Indeed
+        in_scraper = IndeedScraper(keyword, location, max_per_platform)
+        in_results = await in_scraper.scrape(context)
+        in_scraper.save_results(in_results)
+
+        await browser.close()
+        print("\nAll platforms processed. Check data/master_scraped_jobs.json")
 
 if __name__ == "__main__":
-    scraper = LinkedInScraper(keyword="Web Developer", location="India", max_jobs=10)
-    asyncio.run(scraper.scrape())
+    import argparse
+    parser = argparse.ArgumentParser(description="Scrape Jobs")
+    parser.add_argument("--keyword", type=str, default="Web Developer", help="Job search keyword")
+    parser.add_argument("--location", type=str, default="India", help="Job search location")
+    parser.add_argument("--max_jobs", type=int, default=10, help="Maximum number of jobs to scrape")
+    args = parser.parse_args()
+
+    asyncio.run(main(args.keyword, args.location, args.max_jobs))

@@ -6,6 +6,17 @@ from app.services.ingestion import IngestionService
 from app.services.parsing import ParsingService
 from app.services.scoring import ScoringService, FeedbackService
 import json
+import os
+import sys
+import asyncio
+import subprocess
+from datetime import datetime, timedelta
+from pydantic import BaseModel
+
+class ScrapeRequest(BaseModel):
+    keyword: str = "Web Developer"
+    location: str = "India"
+    max_jobs: int = 10
 
 router = APIRouter(prefix="/api/v1")
 
@@ -104,13 +115,56 @@ def get_history(db: Session = Depends(get_db)):
 @router.get("/jobs")
 def get_scraped_jobs():
     try:
-        # Construct path to scraped_jobs.json at the root of the ATS project
+        # Construct path to master_scraped_jobs.json at the root of the ATS project
         import os
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-        jobs_file = os.path.join(base_dir, "data", "scraped_jobs.json")
+        jobs_file = os.path.join(base_dir, "data", "master_scraped_jobs.json")
         if not os.path.exists(jobs_file):
             return []
         with open(jobs_file, "r", encoding="utf-8") as f:
             return json.load(f)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/jobs/scrape")
+async def scrape_jobs_endpoint(req: ScrapeRequest):
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        jobs_file = os.path.join(base_dir, "data", "master_scraped_jobs.json")
+        
+        # Check cache if data exists
+        if os.path.exists(jobs_file):
+            with open(jobs_file, "r", encoding="utf-8") as f:
+                existing_jobs = json.load(f)
+                
+            # Filter jobs by keyword and location
+            matched_jobs = [
+                j for j in existing_jobs 
+                if j.get("keyword", "").lower() == req.keyword.lower() 
+                and j.get("location", "").lower() == req.location.lower()
+            ]
+            
+            if matched_jobs:
+                latest_job = max(matched_jobs, key=lambda x: x.get("timestamp", "2000-01-01"))
+                if "timestamp" in latest_job:
+                    last_time = datetime.fromisoformat(latest_job["timestamp"])
+                    if datetime.now() - last_time < timedelta(minutes=30):
+                        return {"message": "Recent jobs exist (under 30 mins). Skipping scrape to save resources.", "cached": True}
+
+        script_path = os.path.join(base_dir, "scripts", "scraping.py")
+        
+        process = await asyncio.create_subprocess_exec(
+            sys.executable, script_path,
+            "--keyword", req.keyword,
+            "--location", req.location,
+            "--max_jobs", str(req.max_jobs),
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"Scraping failed: {stderr.decode()}")
+            
+        return {"message": "Scraping completed successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
