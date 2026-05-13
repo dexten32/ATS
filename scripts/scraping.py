@@ -439,7 +439,7 @@ class PlacementIndiaScraper(BaseScraper):
 
 # --- MAIN COORDINATOR ---
 async def main(keyword: str, location: str, max_jobs: int):
-    # Divide total jobs among 7 scrapers, ensuring at least 2 per platform to get a decent spread
+    # Assign the user-defined max limit to each platform individually
     scrapers_classes = [
         LinkedInScraper, 
         IndeedScraper, 
