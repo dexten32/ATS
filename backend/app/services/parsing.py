@@ -145,7 +145,7 @@ class ParsingService:
                 counts[domain] = count
         
         if not counts:
-            return "General Tech"
+            return "Software Engineering"
         return max(counts, key=counts.get)
 
     @staticmethod

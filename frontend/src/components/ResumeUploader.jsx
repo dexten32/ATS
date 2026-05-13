@@ -2,9 +2,8 @@ import { useState, useRef } from "react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-export function ResumeUploader({ onAnalyze, isLoading }) {
+export function ResumeUploader({ onUpload, isLoading }) {
   const [file, setFile] = useState(null)
-  const [jobDescription, setJobDescription] = useState("")
   const fileInputRef = useRef(null)
 
   const handleFileChange = (e) => {
@@ -26,20 +25,20 @@ export function ResumeUploader({ onAnalyze, isLoading }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!file || !jobDescription) return
-    onAnalyze(file, jobDescription)
+    if (!file) return
+    onUpload(file)
   }
 
   return (
     <Card className="w-full max-w-3xl mx-auto shadow-sm border border-border bg-card">
       <CardHeader className="pb-6 border-b border-border/50 mb-6">
-        <CardTitle className="text-xl font-bold text-card-foreground">Start Analysis</CardTitle>
+        <CardTitle className="text-xl font-bold text-card-foreground">Upload Resume</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-3">
             <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              1. Candidate Resume
+              Select Candidate Resume
             </label>
             <div 
               className={`border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-all ${file ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/50'}`}
@@ -68,30 +67,17 @@ export function ResumeUploader({ onAnalyze, isLoading }) {
                     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
                   </div>
                   <p className="font-medium text-foreground">Select a file or drag and drop here</p>
-                  <p className="text-sm text-muted-foreground mt-1">PDF, DOCX, or TXT up to 10MB</p>
+                  <p className="text-sm text-muted-foreground mt-1">PDF, DOCX, or TXT up to 5MB</p>
                 </div>
               )}
             </div>
           </div>
-
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-              2. Job Description
-            </label>
-            <textarea
-              className="flex min-h-[160px] w-full rounded-lg border border-input bg-background px-4 py-3 text-base text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
-              placeholder="Paste the full job description requirements here..."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
-          </div>
           
           <div className="pt-4 flex justify-end">
             <Button 
-              type="button"
+              type="submit"
               className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-8 py-6 rounded-md shadow-sm transition-all" 
-              onClick={handleSubmit} 
-              disabled={!file || !jobDescription || isLoading}
+              disabled={!file || isLoading}
             >
               {isLoading ? (
                 <span className="flex items-center gap-2">
@@ -99,9 +85,9 @@ export function ResumeUploader({ onAnalyze, isLoading }) {
                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                    </svg>
-                   Analyzing...
+                   Uploading...
                 </span>
-              ) : "Run Analysis"}
+              ) : "Upload Resume"}
             </Button>
           </div>
         </form>

@@ -7,7 +7,8 @@ class Resume(Base):
     __tablename__ = "resumes"
 
     id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String)
+    filename = Column(String)  # Exact name
+    file_type = Column(String) # pdf, docx, etc.
     file_path = Column(String)
     content = Column(Text)
     uploaded_at = Column(DateTime, default=datetime.utcnow)
@@ -16,6 +17,7 @@ class Resume(Base):
     candidate_name = Column(String, nullable=True)
     email = Column(String, nullable=True)
     phone = Column(String, nullable=True)
+    domain = Column(String, nullable=True)
     skills = Column(JSON, nullable=True)  # List of skills
     experience_years = Column(Float, nullable=True)
     

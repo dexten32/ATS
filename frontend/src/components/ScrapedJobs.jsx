@@ -13,9 +13,25 @@ export function ScrapedJobs() {
   const [searchTerm, setSearchTerm] = useState('');
   
   // Scraper Controls State
-  const [keyword, setKeyword] = useState('Web Developer');
+  const [resumes, setResumes] = useState([]);
+  const [selectedResumeId, setSelectedResumeId] = useState('');
   const [location, setLocation] = useState('India');
   const [maxJobs, setMaxJobs] = useState(10);
+
+  const fetchResumes = async () => {
+    try {
+      const response = await fetch('/api/v1/resume/all/');
+      if (response.ok) {
+        const data = await response.json();
+        setResumes(data.resumes || []);
+        if (data.resumes && data.resumes.length > 0) {
+          setSelectedResumeId(data.resumes[0].id.toString());
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch resumes:", err);
+    }
+  };
 
   const fetchJobs = async () => {
     try {
@@ -33,16 +49,20 @@ export function ScrapedJobs() {
 
   useEffect(() => {
     fetchJobs();
+    fetchResumes();
   }, []);
 
   const handleScrape = async () => {
     try {
       setIsScraping(true);
       setError(null);
+      const selectedResume = resumes.find(r => r.id.toString() === selectedResumeId);
+      const searchKeyword = selectedResume ? selectedResume.domain : 'Software Engineering';
+
       const response = await fetch('/api/v1/jobs/scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, location, max_jobs: parseInt(maxJobs) })
+        body: JSON.stringify({ keyword: searchKeyword, location, max_jobs: parseInt(maxJobs), resume_id: parseInt(selectedResumeId) || null })
       });
       
       if (!response.ok) {
@@ -101,8 +121,23 @@ export function ScrapedJobs() {
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4 items-end">
             <div className="w-full md:w-1/3">
-              <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Keyword</label>
-              <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="e.g. Data Scientist" disabled={isScraping} />
+              <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Select Resume (for Domain)</label>
+              <select 
+                value={selectedResumeId} 
+                onChange={(e) => setSelectedResumeId(e.target.value)} 
+                disabled={isScraping || resumes.length === 0}
+                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {resumes.length === 0 ? (
+                  <option value="" disabled>No resumes uploaded</option>
+                ) : (
+                  resumes.map(r => (
+                    <option key={r.id} value={r.id}>
+                      {r.display_name} ({r.domain || 'Software Engineering'})
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
             <div className="w-full md:w-1/3">
               <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Location</label>

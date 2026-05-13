@@ -58,6 +58,12 @@ INDUSTRY_DOMAINS = {
     "Fintech": ["fintech", "banking", "finance", "payment", "crypto", "trading", "ledger"],
     "E-commerce": ["e-commerce", "retail", "shopping", "cart", "marketplace", "order management"],
     "Cybersecurity": ["cybersecurity", "infosec", "threat", "penetration", "incident response", "compliance"],
+    "Web Development": ["web", "frontend", "backend", "full stack", "fullstack", "saas", "webapp"],
+    "Data & AI": ["data science", "machine learning", "ai", "analytics", "big data", "data engineering"],
+    "Cloud & DevOps": ["cloud", "devops", "infrastructure", "aws", "azure", "networking", "kubernetes"],
+    "Mobile Development": ["ios", "android", "mobile app", "react native", "flutter", "swift"],
+    "Game Development": ["game development", "unity", "unreal engine", "gameplay", "3d modeling"],
+    "Education/EdTech": ["edtech", "education", "student", "learning platform", "courseware"]
 }
 
 SENIORITY_SIGNALS = {
