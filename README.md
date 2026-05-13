@@ -9,6 +9,8 @@ ATS Pro is a modern, high-performance Applicant Tracking System (ATS) utility de
 - **Strategic Insights**: Provides actionable feedback on candidate maturity, ownership, and technical depth.
 - **Glassmorphism UI**: Beautiful, premium dark-themed interface with real-time analysis updates.
 - **Security Hardened**: Built-in protections against path traversal and oversized file uploads.
+- **Automated Multi-Platform Sourcing**: Upload a resume to automatically trigger concurrent job scraping across 7 platforms (LinkedIn, Indeed, Naukri, Glassdoor, etc.) using the candidate's extracted domain.
+- **Live Incremental Scoring**: Scraped jobs are dynamically evaluated and scored against the candidate's resume in real-time as they stream into the dashboard.
 
 ## Technology Stack
 

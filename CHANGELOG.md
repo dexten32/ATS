@@ -2,6 +2,14 @@
 
 All notable changes to the ATS Pro project will be documented in this file.
 
+## [2026-05-13] - Automated Multi-Platform Scraping & Dynamic Live Scoring
+
+### Added
+- **Automated Resume Scraping**: The background job scraper now triggers automatically upon resume upload, extracting the candidate's core domain and immediately initiating multi-platform job searches.
+- **Dynamic Live Scoring**: Jobs fetched in the background are now dynamically parsed and scored against the uploaded resume in real-time. Scored jobs are returned to the UI incrementally sorted by alignment.
+- **Individual Platform Limits**: Job scraping limits are now correctly enforced per portal (e.g., exactly X jobs per platform) rather than dividing a single limit across all platforms.
+- **Live Scraped Jobs View**: The frontend now automatically redirects to the Scraped Opportunities view and silently polls for jobs, rendering newly discovered and scored opportunities every 5 seconds.
+
 ## [2026-05-02] - Clean Code & Architecture Refactoring
 
 ### Added

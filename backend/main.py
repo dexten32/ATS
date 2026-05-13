@@ -72,9 +72,11 @@ async def upload_resume_only_main(
         
         return {
             "message": "Resume successfully uploaded, parsed, and recorded", 
+            "id": db_resume.id,
             "filename": resume_file.filename, 
             "file_type": db_resume.file_type,
             "domain": db_resume.domain,
+            "skills": skills,
             "skills_count": len(skills),
             "timestamp": db_resume.uploaded_at.isoformat() if db_resume.uploaded_at else datetime.utcnow().isoformat()
         }

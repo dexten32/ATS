@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ExternalLink, MapPin, Building2, Briefcase, Search, Loader2, Play } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +12,21 @@ export function ScrapedJobs() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Scraper Status State
+  const [scraperIsRunning, setScraperIsRunning] = useState(false);
+  const [scraperLogs, setScraperLogs] = useState([]);
+  const terminalRef = useRef(null);
+  
   // Scraper Controls State
   const [resumes, setResumes] = useState([]);
   const [selectedResumeId, setSelectedResumeId] = useState('');
   const [location, setLocation] = useState('India');
   const [maxJobs, setMaxJobs] = useState(10);
+  
+  const selectedResumeRef = useRef(selectedResumeId);
+  useEffect(() => {
+    selectedResumeRef.current = selectedResumeId;
+  }, [selectedResumeId]);
 
   const fetchResumes = async () => {
     try {
@@ -33,23 +43,55 @@ export function ScrapedJobs() {
     }
   };
 
-  const fetchJobs = async () => {
+  const fetchJobs = async (isPolling = false) => {
     try {
-      setIsLoading(true);
-      const response = await fetch('/api/v1/jobs');
+      if (!isPolling) setIsLoading(true);
+      const url = selectedResumeRef.current 
+        ? `/api/v1/jobs?resume_id=${selectedResumeRef.current}` 
+        : '/api/v1/jobs';
+      const response = await fetch(url);
       if (!response.ok) throw new Error('Failed to fetch jobs');
       const data = await response.json();
       setJobs(data);
     } catch (err) {
-      setError(err.message);
+      if (!isPolling) setError(err.message);
     } finally {
-      setIsLoading(false);
+      if (!isPolling) setIsLoading(false);
+    }
+  };
+
+  const fetchScraperStatus = async () => {
+    try {
+      const response = await fetch('/api/v1/scraper/status');
+      if (response.ok) {
+        const data = await response.json();
+        setScraperIsRunning(data.is_running);
+        setScraperLogs(data.logs || []);
+        
+        // Auto-scroll terminal to bottom
+        if (terminalRef.current) {
+          terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch scraper status:", err);
     }
   };
 
   useEffect(() => {
     fetchJobs();
     fetchResumes();
+
+    // Poll for jobs every 5 seconds to catch automated background scraping
+    const interval = setInterval(() => {
+      fetchJobs(true);
+      fetchScraperStatus();
+    }, 5000);
+    
+    // Initial fetch for status
+    fetchScraperStatus();
+    
+    return () => clearInterval(interval);
   }, []);
 
   const handleScrape = async () => {
@@ -165,7 +207,56 @@ export function ScrapedJobs() {
         </CardContent>
       </Card>
 
-      {(isLoading && !isScraping) && (
+      {/* Live Terminal UI */}
+      {(scraperIsRunning || scraperLogs.length > 0) && (
+        <Card className="mb-8 border-border/40 bg-[#0d1117] text-gray-300 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2 pt-3 border-b border-white/10 bg-black/40 flex flex-row items-center justify-between">
+            <CardTitle className="text-sm font-mono flex items-center gap-2 text-gray-400">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+              scraper_console.log
+            </CardTitle>
+            {scraperIsRunning && (
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs text-emerald-500 font-medium tracking-wide">SCRAPING ACTIVE</span>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent className="p-0">
+            <div 
+              ref={terminalRef}
+              className="h-48 md:h-64 overflow-y-auto p-4 font-mono text-[11px] md:text-xs leading-relaxed"
+              style={{ scrollBehavior: 'smooth' }}
+            >
+              {scraperLogs.length === 0 ? (
+                <div className="text-gray-500 italic flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Waiting for scraper output...
+                </div>
+              ) : (
+                scraperLogs.map((log, i) => (
+                  <div key={i} className="mb-1.5 flex gap-2">
+                    <span className="text-blue-400/50 shrink-0">~</span>
+                    <span className={
+                      log.includes("Error") || log.includes("failed") ? "text-red-400" : 
+                      log.includes("Scraped") ? "text-emerald-400 font-medium" : 
+                      log.includes("Starting") ? "text-blue-300" :
+                      "text-gray-300"
+                    }>
+                      {log}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {(isLoading && !isScraping && !scraperIsRunning) && (
         <div className="flex flex-col items-center justify-center py-20">
           <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
           <p className="text-lg font-medium text-muted-foreground">Loading job data...</p>

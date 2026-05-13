@@ -149,7 +149,7 @@ def get_history(db: Session = Depends(get_db)):
     return results
 
 @router.get("/jobs")
-def get_scraped_jobs():
+def get_scraped_jobs(resume_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
         # Construct path to master_scraped_jobs.json at the root of the ATS project
         import os
@@ -157,49 +157,82 @@ def get_scraped_jobs():
         jobs_file = os.path.join(base_dir, "data", "master_scraped_jobs.json")
         if not os.path.exists(jobs_file):
             return []
+            
         with open(jobs_file, "r", encoding="utf-8") as f:
             jobs = json.load(f)
             
-            cutoff_time = datetime.now() - timedelta(hours=20)
-            recent_jobs = []
-            
-            for j in jobs:
-                ts = j.get("timestamp")
-                if ts:
-                    try:
-                        # Some older isoformats might have Z or milliseconds that Python 3.10- handles fine with fromisoformat
-                        job_time = datetime.fromisoformat(ts.replace('Z', '+00:00'))
-                        # If datetime is timezone aware, we need to handle it or just use naive comparison 
-                        # Assuming they were created with datetime.now().isoformat() which is naive
-                        if job_time.tzinfo:
-                            job_time = job_time.replace(tzinfo=None)
-                            
-                        if job_time >= cutoff_time:
-                            recent_jobs.append(j)
-                    except ValueError:
-                        pass
+        cutoff_time = datetime.now() - timedelta(hours=20)
+        recent_jobs = []
+        
+        for j in jobs:
+            ts = j.get("timestamp")
+            if ts:
+                try:
+                    job_time = datetime.fromisoformat(ts.replace('Z', '+00:00'))
+                    if job_time.tzinfo:
+                        job_time = job_time.replace(tzinfo=None)
                         
-            return sorted(recent_jobs, key=lambda x: x.get("timestamp", ""), reverse=True)
+                    if job_time >= cutoff_time:
+                        recent_jobs.append(j)
+                except ValueError:
+                    pass
+                    
+        updated = False
+        if resume_id:
+            resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+            if resume:
+                resume_data = {
+                    "skills": resume.skills or [],
+                    "experience_years": resume.experience_years or 0,
+                    "domain": resume.domain or "Software Engineering",
+                    "seniority": ParsingService.detect_seniority(resume.content) if resume.content else "Junior",
+                    "contacts_found": bool(resume.email)
+                }
+                for job in recent_jobs:
+                    if job.get("score", 0) == 0:
+                        jd_text = job.get("full_description", "")
+                        if jd_text and jd_text != "Description not found":
+                            try:
+                                jd_features = ParsingService.parse_job_description(jd_text)
+                                match_results = ScoringService.calculate_score(resume_data, jd_features, resume.content, jd_text)
+                                job["score"] = match_results["overall_score"]
+                                updated = True
+                            except Exception as ex:
+                                print(f"Dynamic scoring error for job: {ex}")
+                                
+        if updated:
+            with open(jobs_file, "w", encoding="utf-8") as f:
+                json.dump(jobs, f, indent=4, ensure_ascii=False)
+                
+        return sorted(recent_jobs, key=lambda x: (x.get("score", 0), x.get("timestamp", "")), reverse=True)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 from fastapi import BackgroundTasks
 
+scraper_is_running = False
+
 async def run_scraper_task(keyword: str, location: str, max_jobs: int, base_dir: str, resume_id: Optional[int] = None):
+    global scraper_is_running
+    scraper_is_running = True
     script_path = os.path.join(base_dir, "scripts", "scraping.py")
+    log_file_path = os.path.join(base_dir, "data", "scraper.log")
+    
     try:
-        process = await asyncio.create_subprocess_exec(
-            sys.executable, script_path,
-            "--keyword", keyword,
-            "--location", location,
-            "--max_jobs", str(max_jobs),
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
-        if process.returncode != 0:
-            print(f"Background scraping failed: {stderr.decode()}")
-        else:
-            print(f"Background scraping completed for {keyword} in {location}")
+        with open(log_file_path, "w", encoding="utf-8") as log_file:
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, "-u", script_path,
+                "--keyword", keyword,
+                "--location", location,
+                "--max_jobs", str(max_jobs),
+                stdout=log_file, stderr=subprocess.STDOUT
+            )
+            await process.wait()
+            
+            if process.returncode != 0:
+                print(f"Background scraping failed")
+            else:
+                print(f"Background scraping completed for {keyword} in {location}")
             
             # Post-scraping: Scoring
             if resume_id:
@@ -240,6 +273,24 @@ async def run_scraper_task(keyword: str, location: str, max_jobs: int, base_dir:
                     print(f"Error during post-scraping scoring: {ex}")
     except Exception as e:
         print(f"Background scraping error: {str(e)}")
+    finally:
+        scraper_is_running = False
+
+@router.get("/scraper/status")
+def get_scraper_status():
+    global scraper_is_running
+    import os
+    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    log_file_path = os.path.join(base_dir, "data", "scraper.log")
+    logs = []
+    if os.path.exists(log_file_path):
+        try:
+            with open(log_file_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                logs = [line.strip() for line in lines[-50:]]
+        except:
+            pass
+    return {"is_running": scraper_is_running, "logs": logs}
 
 @router.post("/jobs/scrape")
 async def scrape_jobs_endpoint(req: ScrapeRequest, background_tasks: BackgroundTasks):

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ResumeUploader } from '@/components/ResumeUploader'
 
-export function Dashboard() {
+export function Dashboard({ setCurrentView }) {
   const [resumes, setResumes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -41,7 +41,29 @@ export function Dashboard() {
         throw new Error(`Upload failed with status ${response.status}`);
       }
 
+      const uploadData = await response.json();
+
+      // Trigger automatic scraping
+      try {
+        await fetch('/api/v1/jobs/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            keyword: uploadData.domain, 
+            location: "India", 
+            max_jobs: 10, 
+            resume_id: uploadData.id 
+          })
+        });
+      } catch (err) {
+        console.error("Auto scrape failed:", err);
+      }
+
       await fetchResumes();
+      
+      if (setCurrentView) {
+        setCurrentView('jobs');
+      }
     } catch (err) {
       console.error("Error during upload:", err);
       setError("Failed to upload resume. Please try again.");

@@ -1,0 +1,31 @@
+--- Launching parallel scrapers for Web Development in India across 7 platforms ---
+
+[LinkedIn] Starting search for Web Development...
+
+[Indeed] Starting search for Web Development...
+
+[Naukri] Starting search for Web Development...
+
+[Glassdoor] Starting search for Web Development...
+
+[Internshala] Starting search for Web Development...
+
+[Apna] Starting search for Web Development...
+
+[PlacementIndia] Starting search for Web Development...
+--- [Apna] Scraped 0 jobs ---
+--- [PlacementIndia] Scraped 0 jobs ---
+--- [Indeed] Scraped 9 jobs ---
+--- [LinkedIn] Scraped 9 jobs ---
+--- [Internshala] Scraped 9 jobs ---
+--- [Naukri] Scraped 10 jobs ---
+--- [Glassdoor] Scraped 0 jobs ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+--- Saved results to G:\ATS\data\master_scraped_jobs.json ---
+
+All platforms processed. Check data/master_scraped_jobs.json

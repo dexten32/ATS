@@ -14,7 +14,7 @@ function App() {
         <Header currentView={currentView} setCurrentView={setCurrentView} />
 
         <main className={`container mx-auto px-4 py-12 ${currentView === 'home' ? 'max-w-5xl' : 'max-w-7xl'}`}>
-          {currentView === 'home' ? <Dashboard /> : <ScrapedJobs />}
+          {currentView === 'home' ? <Dashboard setCurrentView={setCurrentView} /> : <ScrapedJobs />}
         </main>
         
       </div>
