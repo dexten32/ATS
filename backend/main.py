@@ -93,10 +93,23 @@ app.include_router(api_router)
 # Serve Frontend
 frontend_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 
-# Mount root static files and serve index.html automatically
-# Mount root static files
-app.mount("/static", StaticFiles(directory=frontend_dir, html=True), name="static")
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    # Check if the requested file exists (e.g., JS/CSS assets, favicon)
+    file_path = os.path.join(frontend_dir, full_path)
+    if full_path and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    
+    # Otherwise, return index.html for React Router to handle
+    index_path = os.path.join(frontend_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+        
+    return {"detail": "Frontend not built. Please run 'npm run build' in the frontend directory."}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    import os
+    
+    port = int(os.environ.get("PORT", 8001))
+    uvicorn.run(app, host="0.0.0.0", port=port)

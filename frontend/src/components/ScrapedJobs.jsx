@@ -81,18 +81,22 @@ export function ScrapedJobs() {
   useEffect(() => {
     fetchJobs();
     fetchResumes();
-
-    // Poll for jobs every 5 seconds to catch automated background scraping
-    const interval = setInterval(() => {
-      fetchJobs(true);
-      fetchScraperStatus();
-    }, 5000);
-    
-    // Initial fetch for status
     fetchScraperStatus();
-    
-    return () => clearInterval(interval);
   }, []);
+
+  // Only poll when the scraper is actually running
+  useEffect(() => {
+    let interval;
+    if (scraperIsRunning) {
+      interval = setInterval(() => {
+        fetchJobs(true);
+        fetchScraperStatus();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [scraperIsRunning]);
 
   const handleScrape = async () => {
     try {
@@ -112,7 +116,8 @@ export function ScrapedJobs() {
         throw new Error(errData.detail || 'Failed to start scraping');
       }
       
-      // Re-fetch jobs after successful scrape
+      // Kick off the polling loop immediately
+      setScraperIsRunning(true);
       await fetchJobs();
     } catch (err) {
       setError(err.message);

@@ -5,7 +5,7 @@ import hashlib
 import os
 from datetime import datetime
 from typing import List, Dict, Any
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, TimeoutError
 from playwright_stealth import Stealth
 
 # --- BASE SCRAPER CLASS ---
@@ -227,10 +227,10 @@ class GlassdoorScraper(BaseScraper):
         search_url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={self.keyword}"
         
         try:
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+            await page.goto(search_url, wait_until="networkidle", timeout=45000)
             await page.wait_for_timeout(5000)
             
-            job_cards = await page.locator("li[data-test='jobListing'], .react-job-listing").all()
+            job_cards = await page.locator("li[data-test='jobListing'], .react-job-listing, [data-test='job-link']").all()
                 
             async def scrape_jd(card):
                 try:
@@ -341,10 +341,10 @@ class ApnaScraper(BaseScraper):
         search_url = f"https://apna.co/jobs?search={self.keyword}&location={self.location}"
         
         try:
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+            await page.goto(search_url, wait_until="networkidle", timeout=45000)
             await page.wait_for_timeout(5000)
             
-            job_cards = await page.locator("a[href*='/job/']").all()
+            job_cards = await page.locator("a[href*='/job/'], a[href*='-job-']").all()
             
             async def scrape_jd(card):
                 try:
@@ -393,10 +393,10 @@ class PlacementIndiaScraper(BaseScraper):
         search_url = f"https://www.placementindia.com/job-search/search.php?keyword={self.keyword}&location={self.location}"
         
         try:
-            await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+            await page.goto(search_url, wait_until="networkidle", timeout=45000)
             await page.wait_for_timeout(3000)
             
-            job_cards = await page.locator(".job-box").all()
+            job_cards = await page.locator(".job-box, .job-wrap").all()
             
             async def scrape_jd(card):
                 try:

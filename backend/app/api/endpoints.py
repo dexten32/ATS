@@ -111,6 +111,31 @@ async def analyze_resume(
         "analysis_id": db_result.id
     }
 
+@router.delete("/resume/{resume_id}")
+async def delete_resume(resume_id: int, db: Session = Depends(get_db)):
+    resume = db.query(models.Resume).filter(models.Resume.id == resume_id).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+        
+    # Delete associated file
+    if resume.file_path and os.path.exists(resume.file_path):
+        try:
+            os.remove(resume.file_path)
+        except Exception as e:
+            print(f"Error deleting file {resume.file_path}: {e}")
+            
+    # Delete related analysis results
+    try:
+        db.query(models.AnalysisResult).filter(models.AnalysisResult.resume_id == resume_id).delete()
+    except Exception as e:
+        print(f"Error deleting related analysis results: {e}")
+        
+    # Delete resume from db
+    db.delete(resume)
+    db.commit()
+    
+    return {"message": "Resume deleted successfully"}
+
 
 @router.get("/resume/all/")
 async def get_all_resumes(db: Session = Depends(get_db)):

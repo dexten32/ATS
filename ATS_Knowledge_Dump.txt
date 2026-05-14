@@ -1,0 +1,51 @@
+# ATS PRO - PROJECT CONTEXT & ARCHITECTURE DUMP
+
+## 1. Application Scope and Working Workflow
+This application is an automated, AI-driven Applicant Tracking System (ATS) that parses a candidate's resume and automatically sources, scores, and ranks highly relevant job opportunities from multiple platforms.
+
+### Tech Stack
+*   **Frontend**: React + Vite + Tailwind CSS. Features dynamic themes (Ocean, Dark, Midnight, Light). Running on Port `5173`.
+*   **Backend**: FastAPI (Python). Running on Port `8001`. Uses SQLite for storing uploaded resumes.
+*   **Scraping Engine**: Playwright + `playwright-stealth` (`scripts/scraping.py`).
+*   **Core Flow**:
+    1. User uploads a PDF resume via the Dashboard.
+    2. Backend parses the resume extracting `skills`, `domain`, and `seniority`.
+    3. Backend immediately kicks off a background scraping subprocess (running unbuffered to stream logs to `data/scraper.log`).
+    4. Playwright scrapes jobs across multiple portals based on the parsed `domain` (e.g., "Software Engineer").
+    5. Jobs are cached in `data/master_scraped_jobs.json`.
+    6. As jobs are pulled, a live-scoring algorithm checks the Job Description against the uploaded resume and assigns an alignment score.
+    7. The Frontend silently polls the backend every 5 seconds to update the UI with new jobs and streams the live scraper terminal logs.
+
+## 2. Current Scraping Capabilities & Limitations
+*   **Working Portals**: LinkedIn, Indeed, Naukri, Internshala.
+*   **Blocked Portals**: Apna, Glassdoor, PlacementIndia.
+*   **Why Blocked?**: These sites use enterprise anti-bot firewalls (Cloudflare Turnstile, Datadome) or highly obfuscated React SPAs that detect Headless Chromium. `playwright-stealth` has been implemented but is not sufficient to bypass these specific firewalls on its own.
+
+---
+
+## 3. Advanced Scraping & Personalization Strategies (For Future Implementation)
+
+If you (the AI) or the user decide to upgrade the scraping engine in a future session, here are the documented strategies to achieve personalized results and bypass anti-bot systems:
+
+### A. Maximizing Personalization WITHOUT Logging In
+To get highly relevant jobs without an account, we must shift the algorithmic burden to the search query itself.
+*   **Strategy**: Instead of searching for a broad parsed domain like `"Software Engineer"`, combine the domain, seniority, and top 2-3 skills into the query.
+*   **Example Query**: `"Junior Software Engineer React Node.js"`
+*   **Why**: This forces the job portal to dig deep into its database rather than serving the same generic, sponsored jobs it shows to all anonymous traffic.
+
+### B. The Risks of Scraping While Logged In
+*   While using real account credentials provides access to proprietary recommendation algorithms (delivering highly relevant jobs), it is extremely dangerous.
+*   Platforms like LinkedIn have zero tolerance for automated bot behavior on authenticated accounts. If Playwright is detected, the account will likely face a permanent ban. 
+
+### C. The "Browser Hijacking" Strategy (Bypassing Cloudflare/Datadome)
+The most robust way to bypass advanced anti-bot firewalls and safely use logged-in sessions is to use the user's *actual* browser profile, rather than creating a new headless one.
+
+**Method 1: Chrome DevTools Protocol (CDP)**
+1. The user launches their normal Chrome browser from the terminal with remote debugging enabled: `chrome.exe --remote-debugging-port=9222`.
+2. The user manually logs into LinkedIn, Glassdoor, etc., solving any CAPTCHAs themselves.
+3. Playwright connects to the active browser using: `await playwright.chromium.connect_over_cdp("http://localhost:9222")`.
+4. Playwright literally drives the user's active browser tab to scrape the data.
+
+**Method 2: Persistent Contexts (User Data Directory)**
+1. Playwright is configured to load the user's local Chrome `User Data` directory on startup using `browser_type.launch_persistent_context(user_data_dir)`.
+2. This loads all legitimate cookies, cache, and active sessions. Anti-bot systems see a browser with months of natural human history and rarely flag it.
