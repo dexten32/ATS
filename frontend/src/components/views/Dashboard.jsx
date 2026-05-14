@@ -73,10 +73,6 @@ export function Dashboard({ setCurrentView }) {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this resume?")) {
-      return;
-    }
-    
     try {
       const response = await fetch(`/api/v1/resume/${id}`, {
         method: 'DELETE',
