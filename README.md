@@ -39,7 +39,6 @@ ATS & Scraper Pro is a professional Windows Desktop application designed to brid
 - `backend/`: Core logic, FastAPI server, and AI services.
 - `frontend/`: React source code (Built and served by the backend).
 - `scripts/`: Platform-specific job scraping modules.
-- `training_data/`: Datasets for AI model refinement.
 - `ATS_Pro.spec`: PyInstaller configuration for directory-based distribution.
 - `ats_installer.iss`: Inno Setup script for the Windows installer.
 
