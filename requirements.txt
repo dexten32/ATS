@@ -11,3 +11,6 @@ numpy
 python-dotenv
 aiofiles
 playwright-stealth
+pywebview
+pyinstaller
+requests

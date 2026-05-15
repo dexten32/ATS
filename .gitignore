@@ -1,20 +1,23 @@
+# Python & Env
 __pycache__/
 *.py[cod]
-*$py.class
-.env
-.venv
-env/
 venv/
-ENV/
-env.bak/
-venv.bak/
-*.db
-*.sqlite3
+venv_prod/
+.env
+
+# Heavy AI Data (Local Only)
+training_data/
+
+# Application Data & Outputs
+build/
+dist/
+*.spec
+ats_database.db
+app_debug.log
+data/
 uploads/
+pw-browsers/
 .vscode/
 .idea/
 node_modules/
-dist/
-build/
-.next/
 .DS_Store

@@ -63,7 +63,13 @@ INDUSTRY_DOMAINS = {
     "Cloud & DevOps": ["cloud", "devops", "infrastructure", "aws", "azure", "networking", "kubernetes"],
     "Mobile Development": ["ios", "android", "mobile app", "react native", "flutter", "swift"],
     "Game Development": ["game development", "unity", "unreal engine", "gameplay", "3d modeling"],
-    "Education/EdTech": ["edtech", "education", "student", "learning platform", "courseware"]
+    "Education/EdTech": ["edtech", "education", "student", "learning platform", "courseware"],
+    "Product Management": ["product manager", "product owner", "roadmap", "stakeholder", "prd", "backlog", "user stories", "market research", "customer discovery", "mvp", "product life cycle", "kpis", "metrics", "a/b testing", "go-to-market", "competitive analysis", "strategy"],
+    "Design (UI/UX)": ["ui/ux", "designer", "figma", "sketch", "user interface", "user experience", "prototyping", "wireframing"],
+    "Sales & Marketing": ["sales", "marketing", "business development", "growth", "advertising", "seo", "customer acquisition"],
+    "Human Resources": ["hr", "human resources", "recruiting", "talent acquisition", "onboarding", "payroll"],
+    "Project Management": ["project manager", "pmp", "scrum master", "agile", "delivery", "kanban", "sprint"],
+    "Management/Leadership": ["director", "vp", "chief", "head of", "general manager", "management"]
 }
 
 SENIORITY_SIGNALS = {
@@ -81,11 +87,28 @@ MATURITY_SIGNALS = {
         r"end-to-end", r"full\s*lifecycle", r"stakeholder\s*management", 
         r"technical\s*roadmap", r"mentored\s*senior", r"built\s*from\s*scratch", r"evangelized"
     ],
+    "frontend_depth": [
+        r"state management", r"redux", r"context api", r"hooks", r"performance optimization",
+        r"core web vitals", r"server side rendering", r"ssr", r"static site generation", r"ssg",
+        r"bundle size", r"lazy loading", r"accessibility", r"a11y", r"semantic html"
+    ],
     "Optimization": [
         r"perf\s+tuning", r"query\s*optimization", r"cache\s*strat", r"bottleneck\s*analysis",
         r"profiling", r"resource\s*utilization", r"memory\s*leak"
     ],
 }
+
+POWER_VERBS = [
+    "spearheaded", "orchestrated", "accelerated", "engineered", "pioneered",
+    "optimized", "architected", "transformed", "modernized", "streamlined",
+    "scaled", "mentored", "surpassed", "automated", "negotiated", "executed",
+    "leveraged", "centralized", "devised", "forecasted", "maximized"
+]
+
+WEAK_VERBS = [
+    "helped", "assisted", "worked on", "involved in", "responsible for",
+    "part of", "supported", "contributed to", "handled", "participated"
+]
 
 ARCHITECTURE_KEYWORDS = [
     "microservices", "distributed systems", "eventual consistency", "cap theorem", 

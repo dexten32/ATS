@@ -1,4 +1,6 @@
 import asyncio
+import sys
+import subprocess
 import random
 import json
 import hashlib
@@ -16,9 +18,13 @@ class BaseScraper:
         self.max_jobs = max_jobs
         self.jobs = []
         
-        # Ensure data directory exists
-        self.script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.base_dir = os.path.dirname(self.script_dir)
+        # Ensure data directory exists in a permanent location (Safe AppData)
+        if getattr(sys, 'frozen', False):
+            self.base_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'ATS_Pro_AI')
+        else:
+            self.script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.base_dir = os.path.dirname(self.script_dir)
+            
         self.output_dir = os.path.join(self.base_dir, "data")
         os.makedirs(self.output_dir, exist_ok=True)
         self.output_file = os.path.join(self.output_dir, "master_scraped_jobs.json")
@@ -50,12 +56,12 @@ class BaseScraper:
 
         with open(self.output_file, "w", encoding="utf-8") as f:
             json.dump(sorted_jobs, f, indent=4, ensure_ascii=False)
-        print(f"--- Saved results to {self.output_file} ---")
+        print(f"--- Saved results to {self.output_file} ---", flush=True)
 
 # --- LINKEDIN MODULE ---
 class LinkedInScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[LinkedIn] Starting search for {self.keyword}...")
+        print(f"\n[LinkedIn] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         search_url = f"https://www.linkedin.com/jobs/search?keywords={self.keyword}&location={self.location}&f_TPR=r86400"
         
@@ -108,7 +114,7 @@ class LinkedInScraper(BaseScraper):
 # --- INDEED MODULE ---
 class IndeedScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[Indeed] Starting search for {self.keyword}...")
+        print(f"\n[Indeed] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         # Indeed URL format
         search_url = f"https://in.indeed.com/jobs?q={self.keyword}&l={self.location}&fromage=1"
@@ -164,7 +170,7 @@ class IndeedScraper(BaseScraper):
 # --- NAUKRI MODULE ---
 class NaukriScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[Naukri] Starting search for {self.keyword}...")
+        print(f"\n[Naukri] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         k = self.keyword.replace(" ", "-")
         l = self.location.replace(" ", "-")
@@ -214,7 +220,7 @@ class NaukriScraper(BaseScraper):
             self.jobs = [r for r in results if r]
             print(f"--- [Naukri] Scraped {len(self.jobs)} jobs ---")
         except Exception as e:
-            print(f"[Naukri] Error: {e}")
+            print(f"[Naukri] Error: {e}", flush=True)
         finally:
             await page.close()
         return self.jobs
@@ -222,7 +228,7 @@ class NaukriScraper(BaseScraper):
 # --- GLASSDOOR MODULE ---
 class GlassdoorScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[Glassdoor] Starting search for {self.keyword}...")
+        print(f"\n[Glassdoor] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         search_url = f"https://www.glassdoor.co.in/Job/jobs.htm?sc.keyword={self.keyword}"
         
@@ -271,7 +277,7 @@ class GlassdoorScraper(BaseScraper):
             self.jobs = [r for r in results if r]
             print(f"--- [Glassdoor] Scraped {len(self.jobs)} jobs ---")
         except Exception as e:
-            print(f"[Glassdoor] Error: {e}")
+            print(f"[Glassdoor] Error: {e}", flush=True)
         finally:
             await page.close()
         return self.jobs
@@ -279,7 +285,7 @@ class GlassdoorScraper(BaseScraper):
 # --- INTERNSHALA MODULE ---
 class InternshalaScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[Internshala] Starting search for {self.keyword}...")
+        print(f"\n[Internshala] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         k = self.keyword.replace(" ", "-").lower()
         search_url = f"https://internshala.com/jobs/keywords-{k}/"
@@ -328,7 +334,7 @@ class InternshalaScraper(BaseScraper):
             self.jobs = [r for r in results if r]
             print(f"--- [Internshala] Scraped {len(self.jobs)} jobs ---")
         except Exception as e:
-            print(f"[Internshala] Error: {e}")
+            print(f"[Internshala] Error: {e}", flush=True)
         finally:
             await page.close()
         return self.jobs
@@ -336,7 +342,7 @@ class InternshalaScraper(BaseScraper):
 # --- APNA MODULE ---
 class ApnaScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[Apna] Starting search for {self.keyword}...")
+        print(f"\n[Apna] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         search_url = f"https://apna.co/jobs?search={self.keyword}&location={self.location}"
         
@@ -380,7 +386,7 @@ class ApnaScraper(BaseScraper):
             self.jobs = [r for r in results if r]
             print(f"--- [Apna] Scraped {len(self.jobs)} jobs ---")
         except Exception as e:
-            print(f"[Apna] Error: {e}")
+            print(f"[Apna] Error: {e}", flush=True)
         finally:
             await page.close()
         return self.jobs
@@ -388,7 +394,7 @@ class ApnaScraper(BaseScraper):
 # --- PLACEMENTINDIA MODULE ---
 class PlacementIndiaScraper(BaseScraper):
     async def scrape(self, context):
-        print(f"\n[PlacementIndia] Starting search for {self.keyword}...")
+        print(f"\n[PlacementIndia] Starting search for {self.keyword}...", flush=True)
         page = await context.new_page()
         search_url = f"https://www.placementindia.com/job-search/search.php?keyword={self.keyword}&location={self.location}"
         
@@ -432,7 +438,7 @@ class PlacementIndiaScraper(BaseScraper):
             self.jobs = [r for r in results if r]
             print(f"--- [PlacementIndia] Scraped {len(self.jobs)} jobs ---")
         except Exception as e:
-            print(f"[PlacementIndia] Error: {e}")
+            print(f"[PlacementIndia] Error: {e}", flush=True)
         finally:
             await page.close()
         return self.jobs
@@ -451,8 +457,39 @@ async def main(keyword: str, location: str, max_jobs: int):
     ]
     max_per_platform = max_jobs
 
+    print(f"--- Initializing Playwright Scraper ---", flush=True)
     async with Stealth().use_async(async_playwright()) as p:
-        browser = await p.chromium.launch(headless=True) 
+        try:
+            # 1. Try to launch the bundled/local browser first
+            print(f"--- Launching Chromium Browser (headless=True) ---", flush=True)
+            browser = await p.chromium.launch(headless=True) 
+        except Exception as e:
+            print(f"--- Local browser not found. Trying system fallback (Chrome/Edge)... ---", flush=True)
+            try:
+                # 2. Try to use Google Chrome or Edge already on the system
+                # This is nearly instant and avoids the 5-minute download
+                browser = await p.chromium.launch(headless=True, channel="chrome")
+                print(f"--- Success! Using system Chrome. ---", flush=True)
+            except Exception as system_err:
+                print(f"--- System fallback failed. Attempting one-time installation... ---", flush=True)
+                try:
+                    # 3. Only if both fail, try the heavy installation
+                    CREATE_NO_WINDOW = 0x08000000
+                    # Try 'playwright' command directly first as it's more reliable in some bundles
+                    try:
+                        subprocess.run(["playwright", "install", "chromium"], check=True, creationflags=CREATE_NO_WINDOW)
+                    except:
+                        # Fallback to python -m playwright if available
+                        subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True, creationflags=CREATE_NO_WINDOW)
+                    
+                    print("--- Installation successful! ---", flush=True)
+                    browser = await p.chromium.launch(headless=True)
+                except Exception as final_err:
+                    print(f"\nCRITICAL ERROR: Could not launch or install any browser.", flush=True)
+                    print(f"Error details: {final_err}", flush=True)
+                    return
+            
+        print(f"--- Browser launched. Creating context... ---", flush=True)
         context = await browser.new_context(
             viewport={'width': 1280, 'height': 800},
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
@@ -472,10 +509,10 @@ async def main(keyword: str, location: str, max_jobs: int):
             if isinstance(res, list):
                 scraper.save_results(res)
             else:
-                print(f"Error in {scraper.__class__.__name__}: {res}")
+                print(f"Error in {scraper.__class__.__name__}: {res}", flush=True)
 
         await browser.close()
-        print("\nAll platforms processed. Check data/master_scraped_jobs.json")
+        print("\nAll platforms processed. Check data/master_scraped_jobs.json", flush=True)
 
 if __name__ == "__main__":
     import argparse

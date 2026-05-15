@@ -1,4 +1,7 @@
 import re
+import os
+import pickle
+import sys
 from typing import List, Dict, Any
 
 from app.core.constants import (
@@ -137,12 +140,43 @@ class ParsingService:
 
     @staticmethod
     def classify_domain(text: str) -> str:
+        # Try ML Model first
+        try:
+            # Helper to get the correct base directory in both dev and frozen modes
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.dirname(sys.executable)
+            else:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                
+            model_path = os.path.join(base_dir, "core", "domain_model.pkl")
+            
+            if os.path.exists(model_path):
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                    prediction = model.predict([text])[0]
+                    return prediction
+        except Exception as e:
+            print(f"ML Classification failed, falling back to heuristics: {str(e)}")
+
+        # Fallback to Heuristics
         text_lower = text.lower()
+        # Header boost: First 500 chars are weighted 5x more
+        header = text_lower[:500]
+        
         counts = {}
         for domain, keywords in INDUSTRY_DOMAINS.items():
-            count = sum(1 for kw in keywords if kw in text_lower)
-            if count > 0:
-                counts[domain] = count
+            # Count in full text
+            full_count = sum(3 for kw in keywords if kw in text_lower)
+            # Extra boost for header presence
+            header_count = sum(10 for kw in keywords if kw in header)
+            
+            # Massive boost for exact title match in the first line
+            first_line = text_lower.split('\n')[0]
+            title_boost = 50 if any(kw in first_line for kw in keywords) else 0
+            
+            total = full_count + header_count + title_boost
+            if total > 0:
+                counts[domain] = total
         
         if not counts:
             return "Software Engineering"

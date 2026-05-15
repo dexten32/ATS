@@ -4,7 +4,7 @@ from app.db.database import get_db
 from app.models import models
 from app.services.ingestion import IngestionService
 from app.services.parsing import ParsingService
-from app.services.scoring import ScoringService, FeedbackService
+from app.services.scoring import ScoringService, FeedbackService, AuditorService
 import json
 import os
 import sys
@@ -23,43 +23,88 @@ class ScrapeRequest(BaseModel):
 
 router = APIRouter(prefix="/api/v1")
 
+# Helper to get the correct base directory in both dev and frozen modes
+def get_base_dir():
+    if getattr(sys, 'frozen', False):
+        # Professional standard: store data in Local AppData
+        safe_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'ATS_Pro_AI')
+        os.makedirs(safe_dir, exist_ok=True)
+        return safe_dir
+    # 3 levels up from backend/app/api/endpoints.py to root
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+
+from pydantic import BaseModel
+
+class Constraints(BaseModel):
+    can_learn_skills: bool = True
+    can_add_projects: bool = True
+
+class AnalysisRequest(BaseModel):
+    resume_id: int
+    job_description: str
+    constraints: Optional[Constraints] = None
 
 @router.post("/analyze")
 async def analyze_resume(
-    resume_file: UploadFile = File(...),
-    job_description: str = Form(...),
+    request: AnalysisRequest,
     db: Session = Depends(get_db)
 ):
-    # 1. Ingestion & Validation
-    IngestionService.validate_file(resume_file)
-    file_path = IngestionService.save_file(resume_file)
+    print(f"DEBUG: Analysis request received for ID: {request.resume_id}")
+    # 1. Fetch Resume from DB
+    db_resume = db.query(models.Resume).filter(models.Resume.id == request.resume_id).first()
+    if not db_resume:
+        print(f"DEBUG: Resume with ID {request.resume_id} not found in DB")
+        raise HTTPException(status_code=404, detail="Resume not found")
+        
+    print(f"DEBUG: Resume found: {db_resume.filename}")
+    resume_text = db_resume.content
+    job_description = request.job_description
+    print(f"DEBUG: JD length: {len(job_description) if job_description else 0}")
+
     
-    # 2. Extract Text
-    resume_text = IngestionService.extract_text(file_path)
-    resume_text = IngestionService.sanitize_text(resume_text)
+    # Pre-extract features if not already in DB (or just use stored ones)
+    skills = db_resume.skills or []
+    exp = db_resume.experience_years or 0
+    contact = {"email": db_resume.email, "phone": db_resume.phone}
+    domain = db_resume.domain or "General"
+    seniority = "Mid" # Placeholder if not in DB
     
-    # 3. Parse Resume
-    skills = ParsingService.extract_skills(resume_text)
-    exp = ParsingService.extract_experience_years(resume_text)
-    contact = ParsingService.extract_contact_info(resume_text)
-    domain = ParsingService.classify_domain(resume_text)
-    seniority = ParsingService.detect_seniority(resume_text)
-    
-    # Save Resume to DB
-    db_resume = models.Resume(
-        filename=resume_file.filename,
-        file_path=file_path,
-        content=resume_text,
-        skills=skills,
-        experience_years=exp,
-        email=contact["email"],
-        phone=contact["phone"]
-    )
-    db.add(db_resume)
-    db.commit()
-    db.refresh(db_resume)
-    
-    # 4. Parse Job Description
+    # 4. Handle 'Audit Mode' if JD is empty
+    if not job_description or not job_description.strip() or job_description.strip().lower() == "general":
+        try:
+            resume_data = {
+                "skills": skills, 
+                "experience_years": exp,
+                "domain": domain,
+                "seniority": seniority,
+                "contacts_found": contact["email"] is not None
+            }
+            constraints = request.constraints.dict() if request.constraints else {"can_learn_skills": True, "can_add_projects": True}
+            audit_results = AuditorService.audit(resume_text, resume_data, constraints)
+            
+            return {
+                "mode": "audit",
+                "overall_score": audit_results["overall_score"],
+                "success_prediction": audit_results["success_prediction"],
+                "remedies": audit_results["remedies"],
+                "impact_metrics": audit_results["impact_metrics"],
+                "verb_strength": audit_results["verb_strength"],
+                "keyword_cloud": audit_results["keyword_cloud"],
+                "section_health": audit_results["section_health"],
+                "domain_prediction": audit_results["domain_prediction"],
+                "resume_id": db_resume.id,
+                "skills_found": skills,
+                "experience_years": exp
+            }
+        except Exception as e:
+            print(f"ERROR: Audit failed: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Audit failed: {str(e)}")
+
+
+    # 5. Parse Job Description (Standard Matching Mode)
     jd_features = ParsingService.parse_job_description(job_description)
     db_jd = models.JobDescription(
         title="Dynamic Analysis",
@@ -70,7 +115,7 @@ async def analyze_resume(
     db.commit()
     db.refresh(db_jd)
     
-    # 5. Score & Feedback
+    # 6. Score & Feedback
     resume_data = {
         "skills": skills, 
         "experience_years": exp,
@@ -81,7 +126,7 @@ async def analyze_resume(
     match_results = ScoringService.calculate_score(resume_data, jd_features, resume_text, job_description)
     feedback = FeedbackService.generate_feedback(match_results)
     
-    # 6. Save Result
+    # 7. Save Result
     db_result = models.AnalysisResult(
         resume_id=db_resume.id,
         jd_id=db_jd.id,
@@ -97,6 +142,7 @@ async def analyze_resume(
     db.refresh(db_result)
     
     return {
+        "mode": "match",
         "score": match_results["overall_score"],
         "confidence": match_results["confidence_level"],
         "confidence_value": match_results["confidence_value"],
@@ -176,9 +222,8 @@ def get_history(db: Session = Depends(get_db)):
 @router.get("/jobs")
 def get_scraped_jobs(resume_id: Optional[int] = None, db: Session = Depends(get_db)):
     try:
-        # Construct path to master_scraped_jobs.json at the root of the ATS project
-        import os
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        # Construct path to master_scraped_jobs.json safely
+        base_dir = get_base_dir()
         jobs_file = os.path.join(base_dir, "data", "master_scraped_jobs.json")
         if not os.path.exists(jobs_file):
             return []
@@ -237,29 +282,25 @@ from fastapi import BackgroundTasks
 
 scraper_is_running = False
 
+import contextlib
+from scripts.scraping import main as scraping_main
+
 async def run_scraper_task(keyword: str, location: str, max_jobs: int, base_dir: str, resume_id: Optional[int] = None):
     global scraper_is_running
     scraper_is_running = True
-    script_path = os.path.join(base_dir, "scripts", "scraping.py")
     log_file_path = os.path.join(base_dir, "data", "scraper.log")
     
     try:
-        with open(log_file_path, "w", encoding="utf-8") as log_file:
-            process = await asyncio.create_subprocess_exec(
-                sys.executable, "-u", script_path,
-                "--keyword", keyword,
-                "--location", location,
-                "--max_jobs", str(max_jobs),
-                stdout=log_file, stderr=subprocess.STDOUT
-            )
-            await process.wait()
+        # Create data directory if it doesn't exist
+        os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+        
+        with open(log_file_path, "w", encoding="utf-8", buffering=1) as log_file:
+            with contextlib.redirect_stdout(log_file):
+                print(f"Starting direct scraping task for {keyword} in {location}...")
+                await scraping_main(keyword, location, max_jobs)
+                print(f"Direct scraping completed successfully.")
             
-            if process.returncode != 0:
-                print(f"Background scraping failed")
-            else:
-                print(f"Background scraping completed for {keyword} in {location}")
-            
-            # Post-scraping: Scoring
+            # Post-scraping: Scoring (this logic was already here, let's keep it)
             if resume_id:
                 try:
                     with next(get_db()) as db:
@@ -297,15 +338,31 @@ async def run_scraper_task(keyword: str, location: str, max_jobs: int, base_dir:
                 except Exception as ex:
                     print(f"Error during post-scraping scoring: {ex}")
     except Exception as e:
+        log_file_path = os.path.join(base_dir, "data", "scraper.log")
+        with open(log_file_path, "a", encoding="utf-8") as log_file:
+            log_file.write(f"\nCRITICAL ERROR: {str(e)}\n")
         print(f"Background scraping error: {str(e)}")
     finally:
         scraper_is_running = False
 
+@router.delete("/jobs/clear")
+async def clear_jobs():
+    base_dir = get_base_dir()
+    file_path = os.path.join(base_dir, "data", "master_scraped_jobs.json")
+    log_file = os.path.join(base_dir, "data", "scraper.log")
+    
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    if os.path.exists(log_file):
+        with open(log_file, "w", encoding="utf-8") as f:
+            f.write("Jobs cleared by user.\n")
+        
+    return {"status": "success", "message": "Scraped jobs and logs cleared"}
+
 @router.get("/scraper/status")
 def get_scraper_status():
     global scraper_is_running
-    import os
-    base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    base_dir = get_base_dir()
     log_file_path = os.path.join(base_dir, "data", "scraper.log")
     logs = []
     if os.path.exists(log_file_path):
@@ -320,7 +377,7 @@ def get_scraper_status():
 @router.post("/jobs/scrape")
 async def scrape_jobs_endpoint(req: ScrapeRequest, background_tasks: BackgroundTasks):
     try:
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+        base_dir = get_base_dir()
         jobs_file = os.path.join(base_dir, "data", "master_scraped_jobs.json")
         
         # Check cache if data exists

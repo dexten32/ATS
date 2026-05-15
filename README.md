@@ -1,69 +1,49 @@
-# ATS Pro - AI-Powered Resume Analysis
+# ATS & Scraper Pro - AI-Powered Resume Suite
 
-ATS Pro is a modern, high-performance Applicant Tracking System (ATS) utility designed to optimize resumes for AI-driven hiring workflows. It uses natural language processing and semantic matching to score resumes against job descriptions.
+ATS & Scraper Pro is a professional Windows Desktop application designed to bridge the gap between candidates and opportunities. Originally conceived as a web API, the project pivoted to a **Desktop-First Architecture** to overcome cloud-hosting limitations and provide high-performance, multi-platform job scraping directly from the user's machine.
 
-## Features
+## Key Features
 
-- **AI Scoring**: Advanced semantic matching using TF-IDF and domain-specific heuristics.
-- **Resume Parsing**: Extracts skills, experience, and contact information from PDF, DOCX, and TXT files.
-- **Strategic Insights**: Provides actionable feedback on candidate maturity, ownership, and technical depth.
-- **Glassmorphism UI**: Beautiful, premium dark-themed interface with real-time analysis updates.
-- **Security Hardened**: Built-in protections against path traversal and oversized file uploads.
-- **Automated Multi-Platform Sourcing**: Upload a resume to automatically trigger concurrent job scraping across 7 platforms (LinkedIn, Indeed, Naukri, Glassdoor, etc.) using the candidate's extracted domain.
-- **Live Incremental Scoring**: Scraped jobs are dynamically evaluated and scored against the candidate's resume in real-time as they stream into the dashboard.
+- **Professional Desktop UI**: A sleek, centered window with a custom animated HTML splash screen.
+- **AI Scoring Engine**: Advanced semantic matching using TF-IDF to score resumes against complex job descriptions.
+- **Automated Multi-Platform Sourcing**: Upload a resume to trigger concurrent job scraping across LinkedIn, Indeed, Naukri, Glassdoor, Internshala, and more.
+- **Secure Data Handling**: All resumes, job results, and databases are stored locally in the user's `%LOCALAPPDATA%` folder for maximum privacy and performance.
+- **Standalone Installer**: Comes with a dedicated Windows Installer (`.exe`) for a seamless setup experience.
 
 ## Technology Stack
 
-- **Backend**: FastAPI (Python 3.8+)
-- **Database**: SQLite with SQLAlchemy ORM
-- **Machine Learning**: Scikit-Learn (TF-IDF Similarity)
+- **Core**: Python 3.11+
+- **Backend**: FastAPI (Localhost server)
+- **Scraping**: Playwright with Stealth (Bypasses advanced bot detection)
 - **Frontend**: React, Vite, Tailwind CSS, and shadcn/ui
-- **Deployment**: Uvicorn ASGI server
+- **Packaging**: PyInstaller (onedir mode)
+- **Installer**: Inno Setup
 
-## Prerequisites
+## Packaging & Installation
 
-- **Python 3.8+**
-- (Optional) **Visual Studio Code** for the best development experience.
+### For Users
+1. Download the latest `ATS_Scraper_Setup.exe`.
+2. Run the installer and follow the on-screen instructions.
+3. Launch "ATS & Scraper" from your Desktop or Start Menu.
 
-## Installation
-
-1. **Clone the repository** (or download the source code).
-2. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
+### For Developers (Building the EXE)
+1. Install dependencies: `pip install -r requirements.txt`.
+2. Generate the application folder:
+   ```powershell
+   pyinstaller ATS_Pro.spec --noconfirm
    ```
-
-## Running the Application
-
-1. **Start the Backend Server**:
-   From the project root directory, run:
-   ```bash
-   python backend/main.py
-   ```
-   The server will start at `http://127.0.0.1:8000`.
-
-2. **Start the Frontend Development Server**:
-   ```bash
-   cd frontend
-   npm run dev
-   ```
-   Or build the frontend to serve it via the backend:
-   ```bash
-   cd frontend
-   npm run build
-   ```
-   Then access `http://127.0.0.1:8000` to see the served frontend.
+3. Use **Inno Setup** to compile `ats_installer.iss` into the final `Setup.exe`.
 
 ## Project Structure
 
-- `backend/`: FastAPI application, models, routing, and scoring services.
-- `frontend/`: React + Vite application with Tailwind CSS.
-- `scripts/`: Standalone scripts like the LinkedIn Scraper.
-- `data/`: Storage for scraped jobs and other datasets.
-- `docs/`: Project documentation and overviews.
-- `tests/`: Test files, load test scripts, and dummy resumes.
+- `backend/`: Core logic, FastAPI server, and AI services.
+- `frontend/`: React source code (Built and served by the backend).
+- `scripts/`: Platform-specific job scraping modules.
+- `training_data/`: Datasets for AI model refinement.
+- `ATS_Pro.spec`: PyInstaller configuration for directory-based distribution.
+- `ats_installer.iss`: Inno Setup script for the Windows installer.
 
-## Security & Maintenance
+## Privacy & Security
 
-- To update dependencies: `pip install --upgrade -r requirements.txt`
-- To check file audit logs, see `CHANGELOG.md`.
+ATS Pro prioritizes your data. Unlike web-based ATS tools, your resumes and analysis results never leave your machine (except for scraping queries sent to job portals). All persistent data is stored in:
+`%LOCALAPPDATA%\ATS_Pro_AI`

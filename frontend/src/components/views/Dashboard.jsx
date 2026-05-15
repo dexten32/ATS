@@ -1,12 +1,25 @@
 import { useState, useEffect } from 'react'
 import { ResumeUploader } from '@/components/ResumeUploader'
+import { AnalysisResults } from '@/components/AnalysisResults'
+import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Search, Loader2, BarChart3, FileText, ClipboardList } from 'lucide-react'
 
 export function Dashboard({ setCurrentView }) {
   const [resumes, setResumes] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [error, setError] = useState(null);
-
   const [expandedResumeId, setExpandedResumeId] = useState(null);
+  
+  // Analysis State
+  const [selectedResumeId, setSelectedResumeId] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [analysisResults, setAnalysisResults] = useState(null);
+  
+  // Strategy Constraints
+  const [canLearnSkills, setCanLearnSkills] = useState(true);
+  const [canAddProjects, setCanAddProjects] = useState(true);
 
   const fetchResumes = async () => {
     try {
@@ -14,6 +27,9 @@ export function Dashboard({ setCurrentView }) {
       if (response.ok) {
         const data = await response.json();
         setResumes(data.resumes || []);
+        if (data.resumes && data.resumes.length > 0 && !selectedResumeId) {
+          setSelectedResumeId(data.resumes[0].id.toString());
+        }
       }
     } catch (err) {
       console.error("Error fetching resumes:", err);
@@ -27,7 +43,6 @@ export function Dashboard({ setCurrentView }) {
   const handleUpload = async (file) => {
     setIsLoading(true);
     setError(null);
-
     const formData = new FormData();
     formData.append("resume_file", file);
 
@@ -37,36 +52,10 @@ export function Dashboard({ setCurrentView }) {
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`Upload failed with status ${response.status}`);
-      }
-
-      const uploadData = await response.json();
-
-      // Trigger automatic scraping
-      try {
-        await fetch('/api/v1/jobs/scrape', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            keyword: uploadData.domain, 
-            location: "India", 
-            max_jobs: 10, 
-            resume_id: uploadData.id 
-          })
-        });
-      } catch (err) {
-        console.error("Auto scrape failed:", err);
-      }
-
+      if (!response.ok) throw new Error(`Upload failed`);
       await fetchResumes();
-      
-      if (setCurrentView) {
-        setCurrentView('jobs');
-      }
     } catch (err) {
-      console.error("Error during upload:", err);
-      setError("Failed to upload resume. Please try again.");
+      setError("Failed to upload resume.");
     } finally {
       setIsLoading(false);
     }
@@ -77,164 +66,216 @@ export function Dashboard({ setCurrentView }) {
       const response = await fetch(`/api/v1/resume/${id}`, {
         method: 'DELETE',
       });
-      
       if (response.ok) {
         setResumes(resumes.filter(r => r.id !== id));
-        if (expandedResumeId === id) {
-          setExpandedResumeId(null);
+        if (selectedResumeId === id.toString()) {
+          setSelectedResumeId('');
         }
-      } else {
-        const data = await response.json();
-        setError(`Failed to delete: ${data.detail || 'Unknown error'}`);
       }
     } catch (err) {
       console.error("Error deleting resume:", err);
-      setError("Failed to delete resume. Please try again.");
+    }
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedResumeId) {
+      setError("Please select a resume to analyze.");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setError(null);
+    setAnalysisResults(null);
+
+    try {
+      const response = await fetch("/api/v1/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          resume_id: parseInt(selectedResumeId),
+          job_description: jobDescription || "general",
+          constraints: {
+            can_learn_skills: canLearnSkills,
+            can_add_projects: canAddProjects
+          }
+        }),
+      });
+
+      if (!response.ok) throw new Error("Analysis failed");
+      const data = await response.json();
+      setAnalysisResults(data);
+    } catch (err) {
+      setError("Failed to analyze resume. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
   return (
-    <div className="space-y-12">
+    <div className="space-y-12 pb-20">
       <div className="text-center space-y-3">
         <h2 className="text-4xl font-extrabold tracking-tight text-foreground">
-          Resume <span className="text-primary">Management</span>
+          AI <span className="text-primary">Resume Analyst</span>
         </h2>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
-          Upload and manage candidate resumes. All documents are stored securely in the local uploads directory.
+          Upload your resume and get an instant professional audit or match it against a specific job description.
         </p>
       </div>
 
-      <ResumeUploader onUpload={handleUpload} isLoading={isLoading} />
-      
-      {error && (
-        <div className="w-full max-w-3xl mx-auto mt-6 p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-md flex items-center gap-3 shadow-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-          <span className="font-medium">{error}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        {/* Left Side: Upload & Manage */}
+        <div className="space-y-8">
+          <ResumeUploader onUpload={handleUpload} isLoading={isLoading} />
+          
+          <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
+            <div className="p-4 border-b bg-muted/30 flex items-center justify-between">
+              <h3 className="font-bold flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                Your Documents
+              </h3>
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                {resumes.length}
+              </span>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {resumes.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground text-sm italic">
+                  No documents uploaded yet.
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {resumes.map((resume) => (
+                    <div 
+                      key={resume.id} 
+                      onClick={() => setSelectedResumeId(resume.id.toString())}
+                      className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${selectedResumeId === resume.id.toString() ? 'bg-primary/5 border-l-4 border-primary' : 'hover:bg-muted/50'}`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-sm truncate max-w-[180px]">{resume.display_name}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">{resume.domain}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                         <button 
+                           className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all"
+                           onClick={(e) => {
+                             e.stopPropagation();
+                             handleDelete(resume.id);
+                           }}
+                           title="Delete"
+                         >
+                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                         </button>
+                         {selectedResumeId === resume.id.toString() && <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Analysis Controls */}
+        <div className="bg-card border rounded-xl shadow-lg p-6 space-y-6 sticky top-24">
+          <div className="space-y-2">
+            <h3 className="text-xl font-bold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Configure Analysis
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Paste a Job Description for a specific match, or leave it blank for a general professional audit.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                Job Description (Optional)
+              </label>
+              <Textarea 
+                placeholder="Paste the job description here for precision matching... or leave blank for a general audit."
+                className="min-h-[200px] bg-muted/10 focus:bg-background transition-all"
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+            </div>
+
+            {/* Strategy Toggles */}
+            <div className="p-4 bg-primary/5 rounded-xl border border-primary/10 space-y-4">
+              <p className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Strategy Configuration</p>
+              <div className="flex flex-col gap-3">
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input 
+                      type="checkbox" 
+                      checked={canLearnSkills} 
+                      onChange={(e) => setCanLearnSkills(e.target.checked)}
+                      className="w-4 h-4 rounded border-primary/50 text-primary focus:ring-primary transition-all"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors italic">
+                    I have time to learn and add new skills
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <div className="relative flex items-center">
+                    <input 
+                      type="checkbox" 
+                      checked={canAddProjects} 
+                      onChange={(e) => setCanAddProjects(e.target.checked)}
+                      className="w-4 h-4 rounded border-primary/50 text-primary focus:ring-primary transition-all"
+                    />
+                  </div>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors italic">
+                    I can add or replace projects in my resume
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <Button 
+              className="w-full py-6 text-lg font-bold shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all"
+              onClick={handleAnalyze}
+              disabled={isAnalyzing || resumes.length === 0}
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Analyzing Quality...
+                </>
+              ) : (
+                <>
+                  <Search className="mr-2 h-5 w-5" />
+                  {jobDescription ? "Match Against JD" : "Run Professional Audit"}
+                </>
+              )}
+            </Button>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive text-sm rounded-lg flex items-center gap-2">
+              <div className="w-1 h-1 rounded-full bg-destructive" />
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Results Section */}
+      {analysisResults && (
+        <div className="mt-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-px flex-grow bg-border" />
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <ClipboardList className="h-5 w-5" />
+              <span className="font-bold uppercase tracking-widest text-xs">Analysis Results</span>
+            </div>
+            <div className="h-px flex-grow bg-border" />
+          </div>
+          <AnalysisResults results={analysisResults} />
         </div>
       )}
-
-      <div className="w-full max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between border-b border-border pb-4">
-          <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            Uploaded Documents
-            <span className="bg-primary/10 text-primary text-xs px-2 py-0.5 rounded-full ml-2">
-              {resumes.length}
-            </span>
-          </h3>
-        </div>
-
-        {resumes.length === 0 ? (
-          <div className="text-center py-12 bg-muted/30 rounded-xl border border-dashed border-border">
-            <p className="text-muted-foreground">No documents uploaded yet.</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {resumes.map((resume, index) => (
-              <div 
-                key={resume.id || resume.filename} 
-                className={`flex flex-col bg-card border rounded-lg shadow-sm transition-all group animate-in fade-in slide-in-from-bottom-2 ${
-                  expandedResumeId === resume.id ? "border-primary shadow-md" : "border-border hover:border-primary/50"
-                }`}
-                style={{ animationDelay: `${index * 50}ms` }}
-              >
-                <div 
-                  className="flex items-center justify-between p-4 cursor-pointer"
-                  onClick={() => setExpandedResumeId(expandedResumeId === resume.id ? null : resume.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                      expandedResumeId === resume.id ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary"
-                    }`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                          {resume.display_name}
-                        </p>
-                        {resume.file_type && (
-                          <span className="text-[10px] px-1.5 py-0.5 bg-muted text-muted-foreground font-bold rounded uppercase">
-                            {resume.file_type}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span className="font-mono">
-                          {resume.filename.substring(0, 8)}...
-                        </span>
-                        <span>•</span>
-                        <span className="text-primary/80 font-medium">{resume.domain}</span>
-                        <span>•</span>
-                        <span>{resume.skills?.length || 0} skills</span>
-                        <span>•</span>
-                        <span>
-                          {resume.timestamp > 0 ? new Date(resume.timestamp * 1000).toLocaleString(undefined, {
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          }) : 'Date unknown'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-md transition-all"
-                      onClick={(e) => e.stopPropagation()}
-                      title="Download"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                    </button>
-                    <button 
-                      className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-all"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(resume.id);
-                      }}
-                      title="Delete Resume"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-                    </button>
-                    <div className={`text-muted-foreground transition-transform duration-300 ${expandedResumeId === resume.id ? "rotate-180" : ""}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </div>
-                  </div>
-                </div>
-
-                {expandedResumeId === resume.id && (
-                  <div className="px-4 pb-4 pt-2 border-t border-muted/50 bg-muted/5 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-2">
-                      <div className="md:col-span-1">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Industry Domain</h4>
-                        <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                          {resume.domain}
-                        </div>
-                      </div>
-                      <div className="md:col-span-2">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">Technical Skills</h4>
-                        <div className="flex flex-wrap gap-1.5">
-                          {resume.skills && resume.skills.length > 0 ? (
-                            resume.skills.map((skill, idx) => (
-                              <span key={idx} className="px-2 py-0.5 bg-primary/5 text-primary text-[11px] border border-primary/10 rounded-full">
-                                {skill}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">No skills extracted</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   )
 }
+

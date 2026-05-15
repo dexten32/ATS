@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ExternalLink, MapPin, Building2, Briefcase, Search, Loader2, Play } from 'lucide-react';
+import { ExternalLink, MapPin, Building2, Briefcase, Search, Loader2, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -98,6 +98,18 @@ export function ScrapedJobs() {
     };
   }, [scraperIsRunning]);
 
+  const handleClearAll = async () => {
+    try {
+      const response = await fetch('/api/v1/jobs/clear', { method: 'DELETE' });
+      if (response.ok) {
+        setJobs([]);
+        setScraperLogs(["Jobs cleared by user."]);
+      }
+    } catch (err) {
+      console.error("Failed to clear jobs:", err);
+    }
+  };
+
   const handleScrape = async () => {
     try {
       setIsScraping(true);
@@ -126,10 +138,10 @@ export function ScrapedJobs() {
     }
   };
 
-  const filteredJobs = jobs.filter(job => 
-    job.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    job.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    job.location.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredJobs = (jobs || []).filter(job => 
+    (job?.title?.toLowerCase() || "").includes(searchTerm.toLowerCase()) || 
+    (job?.company?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+    (job?.location?.toLowerCase() || "").includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -194,20 +206,42 @@ export function ScrapedJobs() {
               <label className="text-sm font-medium mb-1.5 block text-muted-foreground">Max Jobs</label>
               <Input type="number" min="1" max="50" value={maxJobs} onChange={(e) => setMaxJobs(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))} disabled={isScraping} />
             </div>
-            <Button 
-              onClick={handleScrape} 
-              disabled={isScraping}
-              className="w-full md:w-auto font-semibold shadow-sm transition-all"
-            >
-              {isScraping ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Scraping...
-                </>
-              ) : (
-                "Start Scraping"
-              )}
-            </Button>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button 
+                onClick={handleScrape} 
+                disabled={isScraping}
+                className="flex-grow md:w-auto font-semibold shadow-sm transition-all"
+              >
+                {isScraping ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scraping...
+                  </>
+                ) : (
+                  "Start Scraping"
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                size="icon"
+                onClick={() => fetchJobs()} 
+                disabled={isLoading || isScraping}
+                className="shrink-0 font-semibold shadow-sm transition-all"
+                title="Refresh Job List"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              </Button>
+              <Button 
+                variant="outline"
+                size="icon"
+                onClick={handleClearAll} 
+                disabled={isLoading || isScraping}
+                className="shrink-0 font-semibold shadow-sm transition-all text-destructive hover:bg-destructive/10"
+                title="Clear All Jobs"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

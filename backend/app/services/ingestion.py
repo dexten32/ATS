@@ -7,7 +7,12 @@ import docx
 from fastapi import UploadFile, HTTPException
 from typing import Tuple
 
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
+import sys
+if getattr(sys, 'frozen', False):
+    # Safe writable path for resumes when installed in Program Files
+    UPLOAD_DIR = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'ATS_Pro_AI', 'uploads')
+else:
+    UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 

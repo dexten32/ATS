@@ -1,7 +1,12 @@
 from typing import List, Dict, Any, Tuple
 from .matching import SemanticMatchingService
-from app.core.constants import SKILL_GROUPS
+from app.core.constants import SKILL_GROUPS, POWER_VERBS, WEAK_VERBS, INDUSTRY_DOMAINS
 from .parsing import ParsingService
+import os
+import pickle
+import sys
+import re
+from collections import Counter
 
 # Weights (Maturity-Core Pillar)
 SKILL_WEIGHT = 0.3
@@ -202,6 +207,63 @@ class ScoringService:
         
         return {"level": confidence, "value": round(confidence_val, 2)}
 
+    @staticmethod
+    def predict_success(resume_data: Dict[str, Any], text: str) -> Dict[str, Any]:
+        try:
+            # Get paths (Universal support for dev and PyInstaller)
+            if getattr(sys, 'frozen', False):
+                base_dir = os.path.join(getattr(sys, '_MEIPASS'), "backend", "app")
+            else:
+                base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            model_path = os.path.join(base_dir, "core", "success_model.pkl")
+            bench_path = os.path.join(base_dir, "core", "market_intelligence.pkl")
+            
+            if not os.path.exists(model_path):
+                return {"prediction": 50.0, "benchmarks": None}
+
+            # 1. Prepare Features for Prediction
+            # Features: [exp_years, hard_skills, soft_skills, salary, domain_id]
+            exp_years = resume_data.get("experience_years", 0.0)
+            skills = resume_data.get("skills", [])
+            hard_skills_count = len(skills) # Approximation
+            soft_skills_count = 5 # Default
+            salary = 0.0 # Default if unknown
+            
+            # Domain ID mapping
+            domain_name = resume_data.get("domain", "General")
+            domain_id = 0
+            for i, d in enumerate(INDUSTRY_DOMAINS.keys()):
+                if d == domain_name:
+                    domain_id = i + 1
+                    break
+            
+            features = [[exp_years, hard_skills_count, soft_skills_count, salary, domain_id]]
+            
+            # 2. Predict
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
+                # LinearSVC doesn't have predict_proba by default, but RandomForest does
+                # Since I used RandomForest in big_data_trainer, we can get probability
+                proba = model.predict_proba(features)[0][1] # Probability of "Invitation"
+                prediction_score = round(proba * 100, 2)
+            
+            # 3. Get Benchmarks
+            benchmarks = None
+            if os.path.exists(bench_path):
+                with open(bench_path, "rb") as f:
+                    intel_data = pickle.load(f)
+                    all_benchmarks = intel_data["benchmarks"]
+                    benchmarks = all_benchmarks.get(domain_name, all_benchmarks.get("General"))
+
+            return {
+                "prediction": prediction_score,
+                "benchmarks": benchmarks
+            }
+        except Exception as e:
+            print(f"Success Prediction failed: {str(e)}")
+            return {"prediction": 50.0, "benchmarks": None}
+
 
 class FeedbackService:
     @staticmethod
@@ -256,4 +318,208 @@ class FeedbackService:
             "missing_requirements": missing_requirements,
             "misalignment": misalignment,
             "strengths": match_results.get("matched_skills", [])[:5]
+        }
+
+
+import re
+from collections import Counter
+from app.core.constants import POWER_VERBS, WEAK_VERBS, INDUSTRY_DOMAINS
+
+class AuditorService:
+    @staticmethod
+    def audit(text: str, resume_data: Dict[str, Any] = None, constraints: Dict[str, bool] = None) -> Dict[str, Any]:
+        if constraints is None:
+            constraints = {"can_learn_skills": True, "can_add_projects": True}
+            
+        text_lower = text.lower()
+        
+        # 1. Impact Score (Metrics/Numbers)
+        all_nums = re.findall(r'\b\d+(?:\.\d+)?%|\$\d+(?:,\d+)*(?:\.\d+)?(?:[kmbt])?\b|\b\d{2,}\b', text)
+        
+        metrics = []
+        for n in all_nums:
+            clean_n = n.replace('%', '').replace('$', '').replace(',', '')
+            try:
+                val = float(clean_n)
+                if 1990 <= val <= 2030: continue
+                if val > 10000000 and '.' not in clean_n: continue
+                metrics.append(n)
+            except:
+                continue
+
+        # 1. Impact Score (Calibrated: 8 metrics is now the strong threshold)
+        metric_count = len(set(metrics))
+        impact_score = min(100, (metric_count / 8) * 100) 
+        
+        # 2. Verb Strength (Calibrated: 10 power verbs is now the strong threshold)
+        power_found = [v for v in POWER_VERBS if re.search(rf'\b{v}\b', text_lower)]
+        weak_found = [v for v in WEAK_VERBS if re.search(rf'\b{v}\b', text_lower)]
+        
+        power_count = len(power_found)
+        weak_count = len(weak_found)
+        
+        if power_count == 0:
+            verb_score = 0
+        else:
+            base_score = (power_count / (power_count + weak_count)) * 100 if (power_count + weak_count) > 0 else 0
+            quantity_multiplier = min(1.0, power_count / 10)
+            verb_score = base_score * quantity_multiplier
+            
+        # 3. Keyword Identity (Cloud)
+        all_keywords = []
+        for domain, kws in INDUSTRY_DOMAINS.items():
+            for kw in kws:
+                if rf"\b{kw.lower()}\b" in text_lower:
+                    all_keywords.append(kw)
+        
+        top_keywords = [kw for kw, _ in Counter(all_keywords).most_common(15)]
+        
+        # 4. Section Health
+        sections = {
+            "Contact Info": bool(re.search(r'email|phone|@|\d{10}|linkedin|github', text_lower)),
+            "Experience": bool(re.search(r'experience|work|employment|history|professional', text_lower)),
+            "Skills": bool(re.search(r'skills|technologies|tools|expertise|stack', text_lower)),
+            "Education": bool(re.search(r'education|university|college|degree|bachelor|master', text_lower))
+        }
+        
+        section_score = (sum(sections.values()) / len(sections)) * 100
+        
+        # 5. Success Prediction (Data-Driven)
+        prediction_res = {"prediction": 50.0, "benchmarks": None}
+        if resume_data:
+            prediction_res = ScoringService.predict_success(resume_data, text)
+            
+        # 6. Overall Audit Score (Highly reactive to improvements)
+        # Impact (40%) + Verbs (25%) + Sections (25%) + ML Market Probability (10%)
+        base_audit = (impact_score * 0.4) + (verb_score * 0.25) + (section_score * 0.25) + (prediction_res["prediction"] * 0.1)
+        
+        # Seniority Bonus (Up to 5 points for experience maturity)
+        exp_years = resume_data.get("experience_years", 0) if resume_data else 0
+        seniority_bonus = min(5, (exp_years / 10) * 5) if exp_years >= 3 else 0
+        
+        overall_audit = min(100, base_audit + seniority_bonus)
+
+        # 7. Generate Elaborate AI Suggestions to hit 80%+
+        # 7. Generate Elaborate AI Suggestions to hit 80%+
+        remedies = []
+        
+        DOMAIN_SPECIFIC_ADVICE = {
+            "Healthcare": "Focus on HIPAA compliance, HL7/FHIR protocols, and data privacy in patient-facing systems.",
+            "Fintech": "Highlight transaction security, PCI-DSS compliance, and high-concurrency ledger management.",
+            "E-commerce": "Emphasize conversion optimization, inventory scaling, and global payment gateway integration.",
+            "Cybersecurity": "Document threat modeling, zero-trust architectures, and incident response lifecycle ownership.",
+            "Web Development": "Showcase core web vitals, state-management depth, and micro-frontend orchestration.",
+            "Data & AI": "Detail model interpretability, feature engineering pipelines, and MLOps at scale.",
+            "Cloud & DevOps": "Highlight IaC maturity (Terraform/CDK), disaster recovery testing, and cost-optimization metrics.",
+            "Product Management": "Focus on product-market fit metrics, stakeholder negotiation, and data-driven roadmap prioritization.",
+            "Management/Leadership": "Emphasize team scaling (0 to 1), P&L ownership, and strategic organizational transformation."
+        }
+
+        if overall_audit < 98:
+            domain_name = prediction_res.get("domain_prediction", "General Tech")
+            market_data = prediction_res.get("benchmarks") or {}
+            
+            # 1. Skill Density (Using Market Intelligence)
+            if market_data:
+                top_skills = market_data.get("market_skills", [])
+                user_skills = [s.lower() for s in (resume_data.get("skills", []) if resume_data else [])]
+                missing_critical = [s for s in top_skills[:10] if s.lower() not in user_skills]
+                
+                if missing_critical:
+                    skill_list = ', '.join(missing_critical[:3])
+                    remedies.append({
+                        "type": "Strategic Skill Gap",
+                        "text": f"Your profile is missing '{skill_list}', which are currently top-tier requirements for {domain_name} roles. Integrating these specific triggers will increase your visibility in semantic search algorithms by approximately 30%.",
+                        "impact_on_score": f"+{len(missing_critical)*1.5}%"
+                    })
+
+            # 2. Impact Optimization (Quantitative)
+            if impact_score < 90:
+                needed = 10 - metric_count
+                remedies.append({
+                    "type": "Quantitative Proof",
+                    "text": f"Recruiters in the {domain_name} sector prioritize outcome-based resumes. Your metric density is low. Aim to quantify {max(2, needed)} more achievements—focusing on cost reduction, speed increases, or user growth.",
+                    "impact_on_score": "+12%"
+                })
+            
+            # 3. Linguistic Strength (Verb Power)
+            if verb_score < 80:
+                remedies.append({
+                    "type": "Senior Authority Tone",
+                    "text": f"To align with {domain_name} leadership standards, replace passive verbs with decisive ones. Use terms like 'Orchestrated' or 'Spearheaded' to signal that you didn't just 'assist' but actually 'owned' the technical outcomes.",
+                    "impact_on_score": "+8%"
+                })
+                
+            # 4. Domain Specialization (Actionable Industry Insight)
+            specialized_tip = DOMAIN_SPECIFIC_ADVICE.get(domain_name)
+            if specialized_tip and constraints.get("can_add_projects"):
+                remedies.append({
+                    "type": "Industry Edge",
+                    "text": f"Quick Win: {specialized_tip} Adding just one project reflecting these keywords can boost your industry relevance by 15% immediately.",
+                    "impact_on_score": "+10%"
+                })
+            elif specialized_tip:
+                # If they can't add projects, suggest re-wording an existing project to include these keywords
+                remedies.append({
+                    "type": "Contextual Pivot",
+                    "text": f"Strategic Insight: Re-word your existing project descriptions to include keywords like {specialized_tip.split(':')[0]}. This signals domain expertise without requiring new project work.",
+                    "impact_on_score": "+7%"
+                })
+            
+            # 5. Fast-Track Upskilling (Pathway to 100% - only if allowed)
+            if constraints.get("can_learn_skills") and market_data:
+                top_skills = market_data.get("market_skills", [])
+                user_skills = [s.lower() for s in (resume_data.get("skills", []) if resume_data else [])]
+                upskill_targets = [s for s in top_skills[:12] if s.lower() not in user_skills]
+                
+                if upskill_targets:
+                    quick_learn = upskill_targets[:2]
+                    remedies.append({
+                        "type": "Skill Fast-Track",
+                        "text": f"To hit 100%, consider adding or learning {', '.join(quick_learn)}. These are 'High-Velocity' skills that can be picked up in a few weeks and are currently in high demand for {domain_name} roles.",
+                        "impact_on_score": "+10%"
+                    })
+            elif market_data:
+                # If they can't learn skills, focus on "Linguistic Skill Mining"
+                remedies.append({
+                    "type": "Hidden Skill Mining",
+                    "text": f"Since you are focusing on your current stack, ensure you haven't missed mentioning specialized sub-tools or versions related to {domain_name}. Deepening the description of your existing skills can increase semantic match by 10%.",
+                    "impact_on_score": "+8%"
+                })
+            
+            # 6. Strategic Formatting (Actionable seniority signaling)
+            remedies.append({
+                "type": "Authority Signaling",
+                "text": "Strategy: Use 'Senior-level' language for your current projects. Emphasize 'end-to-end ownership' and 'cross-team collaboration' to bridge any seniority gap without needing more years of experience.",
+                "impact_on_score": "+12%"
+            })
+            
+            # 5. Section Health
+            for section, exists in sections.items():
+                if not exists:
+                    remedies.append({
+                        "type": "Structural Integrity",
+                        "text": f"CRITICAL: The '{section}' section was not detected. This is a primary rejection trigger for automated parsers. Ensure the header is standard and the content is plain text.",
+                        "impact_on_score": "+20%"
+                    })
+
+        return {
+            "mode": "audit",
+            "overall_score": round(overall_audit, 2),
+            "success_prediction": prediction_res["prediction"],
+            "remedies": remedies[:4],
+            "keyword_cloud": resume_data.get("skills", [])[:12] if resume_data else [],
+            "impact_metrics": {
+                "score": round(impact_score, 2),
+                "count": metric_count,
+            },
+            "verb_strength": {
+                "score": round(verb_score, 2),
+                "power_verbs_count": power_count,
+                "weak_verbs_count": weak_count,
+                "found_power": list(set(power_found))[:8],
+                "found_weak": list(set(weak_found))[:8]
+            },
+            "section_health": sections,
+            "domain_prediction": ParsingService.classify_domain(text)
         }

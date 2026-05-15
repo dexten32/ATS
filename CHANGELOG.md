@@ -2,6 +2,22 @@
 
 All notable changes to the ATS Pro project will be documented in this file.
 
+## [2026-05-15] - Professional Desktop Pivot & Installer Release
+
+### Added
+- **Pivot to Desktop Application**: Successfully transitioned the entire system from a cloud-hosted API (Render) to a professional, self-contained Windows Desktop application. This resolves API blocking issues and performance bottlenecks encountered during cloud deployment.
+- **Professional Windows Installer**: Implemented a full installation suite using Inno Setup, creating a single `ATS_Scraper_Setup.exe` that handles file extraction, desktop shortcuts, and proper application management.
+- **Animated HTML Splash Screen**: Replaced the static PyInstaller splash screen with a custom-built 640x360 animated HTML window (`loading.html`) featuring minimalist "System Starting" animations and an ambient background glow.
+- **"Instant-Start" Architecture**: Refactored the application bootloader to display the splash screen within 0.5s of clicking the icon, while heavy backend modules (FastAPI, Scikit-Learn, Playwright) load silently in the background.
+- **Safe Data Persistence**: Moved all critical user data (Database, Resume Uploads, Logs, and Scraper Results) from the installation folder to the secure `%LOCALAPPDATA%` directory. This ensures the app runs perfectly even when installed in restricted `Program Files` locations.
+- **Persistent Debug Logging**: Integrated an append-only logging system (`app_debug.log`) stored in the user profile for easy monitoring and troubleshooting of background tasks like job scraping.
+- **Window Management System**: Implemented a professional window swap logic that transitions from a frameless splash screen to a fully-featured, resizable, and centered application dashboard.
+
+### Fixed
+- **Permission Errors (Errno 13)**: Resolved crashes caused by attempting to write logs and databases into protected system folders.
+- **Scraper Pathing**: Fixed the scraper engine's logic to save job results in the new safe AppData directory.
+
+
 ## [2026-05-13] - Automated Multi-Platform Scraping & Dynamic Live Scoring
 
 ### Added
