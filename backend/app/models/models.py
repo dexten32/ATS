@@ -47,9 +47,17 @@ class AnalysisResult(Base):
     confidence_level = Column(String)
     
     feedback = Column(JSON) # {missing_skills: [], suggestions: [], strengths: []}
+    deep_ai_feedback = Column(JSON, nullable=True) # {strategic_advice: "", authority_score: 0, etc.}
     metadata_info = Column(JSON) # {algo_version: "1.0", timestamp: ""}
     
     created_at = Column(DateTime, default=datetime.utcnow)
 
     resume = relationship("Resume", back_populates="results")
     job_description = relationship("JobDescription", back_populates="results")
+
+class AppSettings(Base):
+    __tablename__ = "app_settings"
+    id = Column(Integer, primary_key=True)
+    config_key = Column(String, unique=True)
+    config_value = Column(JSON)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -35,6 +35,32 @@ SKILL_MAP = {
     "vue": "Vue",
     "ml": "Machine Learning",
     "machine learning": "Machine Learning",
+    "oracle": "Oracle",
+    "oracle dba": "Oracle DBA",
+    "oracle rac": "Oracle RAC",
+    "oracle real application clusters": "Oracle RAC",
+    "oem cloud control": "Oracle OEM",
+    "oracle enterprise manager": "Oracle OEM",
+    "data guard": "Data Guard",
+    "dataguard": "Data Guard",
+    "active data guard": "Data Guard",
+    "rman": "RMAN",
+    "recovery manager": "RMAN",
+    "asm": "ASM",
+    "automatic storage management": "ASM",
+    "goldengate": "GoldenGate",
+    "golden gate": "GoldenGate",
+    "rac": "RAC",
+    "exadata": "Exadata",
+    "oracle 19c": "Oracle 19c",
+    "oracle 12c": "Oracle 12c",
+    "oracle 11g": "Oracle 11g",
+    "sql tuning": "SQL Tuning",
+    "performance tuning": "Performance Tuning",
+    "pl/sql": "PL/SQL",
+    "shell scripting": "Shell Scripting",
+    "unix": "Unix",
+    "linux": "Linux"
 }
 
 SKILL_KEYWORDS = list(set(SKILL_MAP.values()))
@@ -59,8 +85,9 @@ INDUSTRY_DOMAINS = {
     "E-commerce": ["e-commerce", "retail", "shopping", "cart", "marketplace", "order management"],
     "Cybersecurity": ["cybersecurity", "infosec", "threat", "penetration", "incident response", "compliance"],
     "Web Development": ["web", "frontend", "backend", "full stack", "fullstack", "saas", "webapp"],
-    "Data & AI": ["data science", "machine learning", "ai", "analytics", "big data", "data engineering"],
-    "Cloud & DevOps": ["cloud", "devops", "infrastructure", "aws", "azure", "networking", "kubernetes"],
+    "Data & AI": ["data science", "machine learning", "ai", "analytics", "big data", "data engineering", "nlp", "llm", "tensorflow", "pytorch"],
+    "Database & Infrastructure": ["database administrator", "dba", "oracle", "mysql", "postgresql", "sql server", "reliability", "availability", "migration", "rman", "asm", "rac", "data guard", "goldengate", "infrastructure", "on-prem", "bare metal"],
+    "Cloud & DevOps": ["cloud", "devops", "aws", "azure", "networking", "kubernetes", "docker", "terraform", "ansible", "ci/cd"],
     "Mobile Development": ["ios", "android", "mobile app", "react native", "flutter", "swift"],
     "Game Development": ["game development", "unity", "unreal engine", "gameplay", "3d modeling"],
     "Education/EdTech": ["edtech", "education", "student", "learning platform", "courseware"],
@@ -94,20 +121,28 @@ MATURITY_SIGNALS = {
     ],
     "Optimization": [
         r"perf\s+tuning", r"query\s*optimization", r"cache\s*strat", r"bottleneck\s*analysis",
-        r"profiling", r"resource\s*utilization", r"memory\s*leak"
+        r"profiling", r"resource\s*utilization", r"memory\s*leak", r"awr", r"ash", r"addm",
+        r"explain\s*plan", r"performance\s*tuning"
     ],
+    "HighAvailability": [
+        r"data\s*guard", r"rac", r"dgmgrl", r"replication", r"failover", r"disaster\s*recovery",
+        r"backup\s*and\s*recovery", r"rman"
+    ]
 }
 
 POWER_VERBS = [
     "spearheaded", "orchestrated", "accelerated", "engineered", "pioneered",
     "optimized", "architected", "transformed", "modernized", "streamlined",
     "scaled", "mentored", "surpassed", "automated", "negotiated", "executed",
-    "leveraged", "centralized", "devised", "forecasted", "maximized"
+    "leveraged", "centralized", "devised", "forecasted", "maximized",
+    "implemented", "developed", "resolved", "migrated", "upgraded", "integrated",
+    "established", "orchestrated", "formulated", "pioneered", "reduced",
+    "delivered", "cultivated", "strengthened", "designed", "maintained"
 ]
 
 WEAK_VERBS = [
-    "helped", "assisted", "worked on", "involved in", "responsible for",
-    "part of", "supported", "contributed to", "handled", "participated"
+    "helped", "assisted", "worked on", "involved in", "part of",
+    "supported", "contributed to", "participated"
 ]
 
 ARCHITECTURE_KEYWORDS = [
@@ -137,3 +172,5 @@ ARCHITECTURAL_PATTERNS = {
 
 SOFT_SKILLS_KEYWORDS = ["client", "stakeholder", "collaboration", "communication", "requirement gathering", "presentation"]
 FRONTEND_DEPTH_KEYWORDS = ["accessibility", "a11y", "performance tuning", "code splitting", "state management", "design system"]
+
+_SKILL_MAP_NORMALIZED = SKILL_MAP

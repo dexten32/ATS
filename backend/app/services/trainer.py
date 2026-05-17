@@ -33,7 +33,15 @@ class DomainTrainer:
                                 if isinstance(item, dict) and "name" in item:
                                     skills_list.append(item["name"])
                     
-                    full_text = f"{summary} {' '.join(skills_list)}"
+                    # Fix 1: Include job titles + responsibility descriptions for richer domain signal
+                    experience = data.get("experience", [])
+                    titles = " ".join(e.get("title", "") for e in experience if isinstance(e, dict))
+                    responsibilities = " ".join(
+                        " ".join(e.get("responsibilities", [])) if isinstance(e.get("responsibilities"), list)
+                        else e.get("responsibilities", "")
+                        for e in experience if isinstance(e, dict)
+                    )
+                    full_text = f"{summary} {titles} {responsibilities} {' '.join(skills_list)}"
                     
                     # Determine label using existing heuristics (Self-Supervision)
                     best_domain = "General"
@@ -53,22 +61,30 @@ class DomainTrainer:
                 except Exception as e:
                     continue
 
+        if len(texts) < 10:
+            print("Not enough samples to train. Aborting.")
+            return
+
         print(f"Extracted {len(texts)} samples for training across {len(set(labels))} domains.")
 
-        # Create ML Pipeline
+        # Fix 2: Add train/test split so model accuracy is measurable
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            texts, labels, test_size=0.2, random_state=42, stratify=labels if len(set(labels)) > 1 else None
+        )
+
         pipeline = Pipeline([
             ('tfidf', TfidfVectorizer(max_features=5000, stop_words='english', ngram_range=(1, 2))),
             ('clf', LinearSVC(C=1.0, max_iter=1000))
         ])
 
-        # Train
-        pipeline.fit(texts, labels)
+        pipeline.fit(X_train, y_train)
+        accuracy = pipeline.score(X_test, y_test)
+        print(f"Domain Classifier Accuracy (held-out 20%): {accuracy:.2%}")
 
-        # Save model
         os.makedirs(os.path.dirname(model_output_path), exist_ok=True)
         with open(model_output_path, 'wb') as f:
             pickle.dump(pipeline, f)
-            
         print(f"Successfully trained and saved model to {model_output_path}")
 
 if __name__ == "__main__":

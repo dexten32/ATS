@@ -5,6 +5,7 @@ from app.models import models
 from app.services.ingestion import IngestionService
 from app.services.parsing import ParsingService
 from app.services.scoring import ScoringService, FeedbackService, AuditorService
+from app.services.llm import LLMService
 import json
 import os
 import sys
@@ -43,6 +44,7 @@ class Constraints(BaseModel):
 class AnalysisRequest(BaseModel):
     resume_id: int
     job_description: str
+    use_deep_ai: Optional[bool] = False
     constraints: Optional[Constraints] = None
 
 @router.post("/analyze")
@@ -126,6 +128,21 @@ async def analyze_resume(
     match_results = ScoringService.calculate_score(resume_data, jd_features, resume_text, job_description)
     feedback = FeedbackService.generate_feedback(match_results)
     
+    # --- Deep AI Insight (Hybrid Mode) ---
+    deep_ai_feedback = None
+    if request.use_deep_ai:
+        api_key_setting = db.query(models.AppSettings).filter(models.AppSettings.config_key == "gemini_api_key").first()
+        if api_key_setting:
+            api_key = api_key_setting.config_value.get("key")
+            deep_ai_res = LLMService.get_ai_feedback(resume_text, job_description, api_key, db)
+            if "error" in deep_ai_res:
+                # We return the error but don't fail the whole analysis
+                deep_ai_feedback = {"cooldown_active": True, "message": deep_ai_res["error"]}
+            else:
+                deep_ai_feedback = deep_ai_res
+        else:
+            deep_ai_feedback = {"error": "No API Key found. Add one in Settings."}
+
     # 7. Save Result
     db_result = models.AnalysisResult(
         resume_id=db_resume.id,
@@ -135,7 +152,8 @@ async def analyze_resume(
         experience_score=match_results["experience_score"],
         confidence_level=match_results["confidence_level"],
         feedback=feedback,
-        metadata_info={"algo_version": "1.1", "semantic_score": match_results["semantic_score"]}
+        deep_ai_feedback=deep_ai_feedback,
+        metadata_info={"algo_version": "2.0", "semantic_score": match_results["semantic_score"]}
     )
     db.add(db_result)
     db.commit()
@@ -145,17 +163,35 @@ async def analyze_resume(
         "mode": "match",
         "score": match_results["overall_score"],
         "confidence": match_results["confidence_level"],
-        "confidence_value": match_results["confidence_value"],
-        "skill_match": match_results["skill_score"],
-        "exp_match": match_results["experience_score"],
-        "semantic_match": match_results["semantic_score"],
-        "domain_seniority_match": match_results["domain_seniority_score"],
-        "maturity_match": match_results["maturity_score"],
-        "detailed_maturity": match_results["detailed_maturity"],
         "feedback": feedback,
+        "deep_ai_feedback": deep_ai_feedback,
         "resume_id": db_resume.id,
         "analysis_id": db_result.id
     }
+
+@router.get("/settings")
+def get_settings(db: Session = Depends(get_db)):
+    key_setting = db.query(models.AppSettings).filter(models.AppSettings.config_key == "gemini_api_key").first()
+    cooldown_setting = db.query(models.AppSettings).filter(models.AppSettings.config_key == "last_ai_usage").first()
+    
+    return {
+        "has_api_key": bool(key_setting),
+        "last_ai_usage": cooldown_setting.config_value.get("timestamp") if cooldown_setting else None
+    }
+
+class SettingsUpdate(BaseModel):
+    gemini_api_key: str
+
+@router.post("/settings")
+def update_settings(req: SettingsUpdate, db: Session = Depends(get_db)):
+    setting = db.query(models.AppSettings).filter(models.AppSettings.config_key == "gemini_api_key").first()
+    if not setting:
+        setting = models.AppSettings(config_key="gemini_api_key", config_value={"key": req.gemini_api_key})
+        db.add(setting)
+    else:
+        setting.config_value = {"key": req.gemini_api_key}
+    db.commit()
+    return {"status": "success"}
 
 @router.delete("/resume/{resume_id}")
 async def delete_resume(resume_id: int, db: Session = Depends(get_db)):

@@ -96,7 +96,15 @@ class IngestionService:
 
     @staticmethod
     def sanitize_text(text: str) -> str:
-        # Basic sanitization to prevent script injection if text is rendered
-        # Removes HTML tags and trims whitespace
+        # 1. Remove HTML
         clean_text = re.sub(r'<[^>]*>', '', text)
+        
+        # 2. Fix 'Mangled' Text: Join words broken by spaces (e.g. "Skill ed" -> "Skilled")
+        # Uses regex to find a letter followed by space then lowercase letter
+        # but only if it's not a real word break (heuristic)
+        clean_text = re.sub(r'([a-zA-Z])\s+([a-z])\b', r'\1\2', clean_text)
+        
+        # 3. Normalize whitespace
+        clean_text = re.sub(r'\s+', ' ', clean_text)
+        
         return clean_text.strip()
